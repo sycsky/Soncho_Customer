@@ -29,6 +29,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
+  const [customerToken, setCustomerToken] = useState<string>(''); // 新增: 保存 token
   const [browserLanguage, setBrowserLanguage] = useState<string>('en'); // 新增: 浏览器语言
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       
       setCustomerId(customerInfo.customerId);
+      setCustomerName(customerInfo.name);
+      setCustomerToken(customerInfo.token); // 保存 token
       
       // 设置 sessionId 到 WebSocket 服务
       console.log('💾 设置 sessionId:', customerInfo.sessionId);
