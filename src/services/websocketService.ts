@@ -78,6 +78,22 @@ class WebSocketService {
   private onHttpErrorCallback: ((statusCode: number, message: string) => void) | null = null;
   private heartbeatInterval: any = null;
 
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ event: 'ping' }));
+      }
+    }, 30000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
   disconnect() {
     this.shouldReconnect = false;
     this.stopHeartbeat();
@@ -209,8 +225,7 @@ class WebSocketService {
         console.log('✅ WebSocket 连接成功');
         this.reconnectAttempts = 0; // 重置重连次数
         this.updateStatus('connected');
-        
-    
+        this.startHeartbeat();
         
         // 调用连接成功回调
         if (this.onConnectedCallback) {
@@ -407,15 +422,6 @@ class WebSocketService {
     const eventMessage = { event, payload };
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(eventMessage));
-    }
-  }
-
-  disconnect() {
-    console.log('🔌 主动断开 WebSocket 连接');
-    this.shouldReconnect = false;
-    if (this.socket) {
-      this.socket.close(1000, 'Client closed connection');
-      this.socket = null;
     }
   }
 
