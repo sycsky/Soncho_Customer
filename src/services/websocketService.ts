@@ -76,6 +76,16 @@ class WebSocketService {
   private onTokenExpiredCallback: (() => Promise<string | null>) | null = null;
   private onStatusChangeCallback: ((status: ConnectionStatus) => void) | null = null;
   private onHttpErrorCallback: ((statusCode: number, message: string) => void) | null = null;
+  private heartbeatInterval: any = null;
+
+  disconnect() {
+    this.shouldReconnect = false;
+    this.stopHeartbeat();
+    if (this.socket) {
+      this.socket.close();
+      console.log('🔌 Manually disconnected WebSocket.');
+    }
+  }
 
   connect(
     token: string, 
@@ -240,6 +250,7 @@ class WebSocketService {
         console.groupEnd();
         
         this.socket = null;
+        this.stopHeartbeat(); // 停止心跳
         this.updateStatus('disconnected');
         
         // 调用断开连接回调

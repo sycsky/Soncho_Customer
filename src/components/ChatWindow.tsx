@@ -39,6 +39,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     initializeChat();
 
     return () => {
+      // 在组件卸载时断开连接
       websocketService.disconnect();
     };
   }, []);
