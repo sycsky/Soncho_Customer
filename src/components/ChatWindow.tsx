@@ -77,8 +77,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       
       setCustomerId(customerInfo.customerId);
-      setCustomerName(customerInfo.name);
-      setCustomerToken(customerInfo.token); // 保存 token
       
       // 设置 sessionId 到 WebSocket 服务
       console.log('💾 设置 sessionId:', customerInfo.sessionId);
