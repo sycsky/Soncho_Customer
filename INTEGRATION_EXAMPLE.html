@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 客服 Widget 集成示例</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    .hero p {
+      font-size: 20px;
+      opacity: 0.9;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+
+    .section {
+      margin-bottom: 60px;
+    }
+
+    .section h2 {
+      font-size: 32px;
+      margin-bottom: 20px;
+      color: #667eea;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-top: 40px;
+    }
+
+    .feature-card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .feature-card h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+
+    .feature-card p {
+      color: #666;
+    }
+
+    .code-block {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+
+    .code-block code {
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #2d3748;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 20px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .demo-controls {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f7fafc;
+      border-radius: 8px;
+    }
+
+    .demo-controls button {
+      margin: 5px;
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .demo-controls button:hover {
+      background: #5568d3;
+    }
+
+    footer {
+      background: #2d3748;
+      color: white;
+      text-align: center;
+      padding: 40px 20px;
+      margin-top: 80px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>🤖 AI 客服系统</h1>
+    <p>智能、高效、随时在线的客服解决方案</p>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <!-- Features Section -->
+    <div class="section">
+      <h2>核心特性</h2>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>实时响应</h3>
+          <p>基于 WebSocket 的实时双向通信，毫秒级消息送达</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>自动重连</h3>
+          <p>智能断线重连机制，确保连接稳定性</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>美观界面</h3>
+          <p>现代化设计，流畅动画，提升用户体验</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>多端适配</h3>
+          <p>完美支持桌面和移动设备，响应式设计</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔐</div>
+          <h3>安全可靠</h3>
+          <p>Token 认证机制，保护用户隐私和数据安全</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚀</div>
+          <h3>快速集成</h3>
+          <p>一行代码即可接入，无需复杂配置</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Integration Guide -->
+    <div class="section">
+      <h2>快速集成</h2>
+      <p>只需在您的网站中添加以下代码：</p>
+      
+      <div class="code-block">
+        <code>&lt;!-- AI 客服 Widget --&gt;<br>
+&lt;script&gt;<br>
+&nbsp;&nbsp;// 可选配置<br>
+&nbsp;&nbsp;window.AI_CHAT_CONFIG = {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;userName: '访客' // 可选，默认自动生成<br>
+&nbsp;&nbsp;};<br>
+&lt;/script&gt;<br>
+&lt;script src="https://your-domain.com/chat-widget.js"&gt;&lt;/script&gt;</code>
+      </div>
+
+      <p>就是这么简单！Widget 会自动出现在页面右下角。</p>
+    </div>
+
+    <!-- API Examples -->
+    <div class="section">
+      <h2>程序化控制</h2>
+      <p>您也可以通过 JavaScript API 控制 Widget：</p>
+      
+      <div class="code-block">
+        <code>// 打开聊天窗口<br>
+window.aiChatWidget.open();<br>
+<br>
+// 关闭聊天窗口<br>
+window.aiChatWidget.close();<br>
+<br>
+// 切换显示/隐藏<br>
+window.aiChatWidget.toggle();<br>
+<br>
+// 销毁 Widget<br>
+window.aiChatWidget.destroy();</code>
+      </div>
+
+      <div class="demo-controls">
+        <h3>试试这些按钮：</h3>
+        <button onclick="window.aiChatWidget?.open()">打开聊天</button>
+        <button onclick="window.aiChatWidget?.close()">关闭聊天</button>
+        <button onclick="window.aiChatWidget?.toggle()">切换显示</button>
+      </div>
+    </div>
+
+    <!-- Channels Section -->
+    <div class="section">
+      <h2>多渠道支持</h2>
+      <p>我们的客服系统支持多种接入渠道：</p>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>网页聊天</h3>
+          <p>嵌入式 Widget 或独立页面</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>微信</h3>
+          <p>公众号 / 小程序</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>WhatsApp</h3>
+          <p>WhatsApp Business API</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📲</div>
+          <h3>Line / Telegram</h3>
+          <p>主流即时通讯平台</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📧</div>
+          <h3>邮件 / 短信</h3>
+          <p>传统渠道支持</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>移动应用</h3>
+          <p>原生 iOS / Android 应用</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="section" style="text-align: center;">
+      <h2>开始使用</h2>
+      <p>立即体验智能客服系统，提升客户满意度</p>
+      <a href="#" class="btn">查看文档</a>
+      <a href="#" class="btn" style="margin-left: 10px;">联系我们</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2024 AI 客服系统. All rights reserved.</p>
+    <p style="margin-top: 10px; opacity: 0.7;">智能客服，随时在线</p>
+  </footer>
+
+  <!-- AI 客服 Widget -->
+  <script>
+    // Widget 配置
+    window.AI_CHAT_CONFIG = {
+      userName: '访客_Demo'
+    };
+  </script>
+  <!-- 注意：实际使用时，将下面的路径替换为您部署的 Widget 地址 -->
+  <!-- <script src="http://localhost:3002/chat-widget.js"></script> -->
+  
+  <script>
+    // 临时提示（生产环境请删除）
+    console.log('%c🤖 AI 客服 Widget 集成示例', 'font-size: 20px; color: #667eea; font-weight: bold;');
+    console.log('%c要启用 Widget，请取消注释上面的 script 标签并确保服务正在运行', 'font-size: 14px; color: #666;');
+    
+    // 如果 Widget 未加载，显示提示
+    setTimeout(() => {
+      if (!window.aiChatWidget) {
+        alert('Widget 演示模式：\n\n实际使用时，请引入构建好的 chat-widget.js 文件。\n开发环境：运行 npm run build:widget 生成 Widget 文件。');
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

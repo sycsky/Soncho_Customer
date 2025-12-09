@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget 嵌入示例 - AI 客服</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        code {
+            background: #f7fafc;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #e53e3e;
+            font-size: 14px;
+        }
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI 客服 Widget 嵌入示例</h1>
+        
+        <p>
+            这个页面演示了如何将 AI 客服聊天 Widget 嵌入到任何网站中。
+            Widget 会在页面右下角显示一个聊天按钮。
+        </p>
+
+        <div class="info-box">
+            <strong>💡 提示:</strong> 页面右下角的聊天按钮已经自动加载。点击它开始对话！
+        </div>
+
+        <h2>使用方法</h2>
+        <p>在你的网站中添加以下代码：</p>
+        <pre style="background: #2d3748; color: #f7fafc; padding: 20px; border-radius: 8px; overflow-x: auto;"><code>&lt;!-- 1. 引入 Widget 脚本 --&gt;
+&lt;script src="http://localhost:3001/chat-widget.js"&gt;&lt;/script&gt;
+
+&lt;!-- 2. 配置（可选） --&gt;
+&lt;script&gt;
+  window.AI_CHAT_CONFIG = {
+    token: 'your-token',
+    conversationId: 'conv-123',
+    userId: 'user-456'
+  };
+&lt;/script&gt;</code></pre>
+
+        <h2>手动控制</h2>
+        <p>你也可以通过 JavaScript 手动控制 Widget：</p>
+        
+        <div class="button-group">
+            <button onclick="window.aiChatWidget?.open()">打开聊天窗口</button>
+            <button onclick="window.aiChatWidget?.close()">关闭聊天窗口</button>
+            <button onclick="window.aiChatWidget?.toggle()">切换状态</button>
+        </div>
+
+        <h2>特性</h2>
+        <ul style="line-height: 1.8; color: #4a5568;">
+            <li>✅ 实时 WebSocket 通信</li>
+            <li>✅ 响应式设计，支持移动端</li>
+            <li>✅ 自动重连机制</li>
+            <li>✅ 优雅的动画效果</li>
+            <li>✅ 可自定义样式</li>
+            <li>✅ 轻量级，无依赖冲突</li>
+        </ul>
+    </div>
+
+    <!-- 引入 Widget -->
+    <!-- 注意：这里的路径在开发模式下使用，生产环境请使用构建后的文件 -->
+    <script>
+        // 配置 Widget
+        window.AI_CHAT_CONFIG = {
+            token: 'demo-token-' + Date.now(),
+            conversationId: 'demo-conversation',
+            userId: 'demo-user-' + Date.now()
+        };
+    </script>
+    
+    <!-- 实际使用时，应该引入构建后的 chat-widget.js -->
+    <!-- <script src="dist-widget/chat-widget.js"></script> -->
+</body>
+</html>
