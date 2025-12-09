@@ -309,21 +309,39 @@ class WebSocketService {
     }
 
     try {
-      console.log('🔄 尝试刷新 token...');
-      const newToken = await this.onTokenExpiredCallback();
-      
-      if (newToken) {
-        console.log('✅ Token 刷新成功');
-        this.token = newToken;
-        this.reconnectAttempts = 0; // 重置重连次数
-        this.validateAndConnect();
-      } else {
-        console.error('❌ Token 刷新失败，尝试普通重连');
+      // 1. 先验证当前 token 是否真的失效
+      console.log('�️‍♂️ 检查当前 token 是否已失效...');
+      const response = await fetch(`${API_BASE_URL}/api/v1/public/validate-token`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+
+      const isTokenValid = response.ok;
+
+      if (isTokenValid) {
+        // 2. 如果 token 仍然有效，说明是网络问题，直接重连
+        console.log('✅ Token 仍然有效，执行普通重连');
         this.attemptReconnect();
+      } else {
+        // 3. 如果 token 确实失效了，才执行刷新逻辑
+        console.log('⚠️ Token 已失效，开始执行刷新...');
+        const newToken = await this.onTokenExpiredCallback();
+        
+        if (newToken) {
+          console.log('✅ Token 刷新成功');
+          this.token = newToken;
+          this.reconnectAttempts = 0; // 重置重连次数
+          this.validateAndConnect(); // 使用新 token 重新验证并连接
+        } else {
+          console.error('❌ Token 刷新失败，停止重连');
+          this.updateStatus('error'); // 刷新失败，进入错误状态
+        }
       }
     } catch (error) {
-      console.error('❌ Token 刷新异常:', error);
-      this.attemptReconnect();
+      console.error('❌ 检查或刷新 Token 时发生异常:', error);
+      this.attemptReconnect(); // 发生未知异常时，也尝试重连
     }
   }
 
