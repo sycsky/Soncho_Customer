@@ -8,13 +8,15 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:widget": "vite build --mode widget",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve -s dist -l 3000"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sockjs-client": "^1.6.1",
-    "lucide-react": "^0.554.0"
+    "lucide-react": "^0.554.0",
+    "serve": "^14.2.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
