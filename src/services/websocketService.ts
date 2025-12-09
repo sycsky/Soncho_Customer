@@ -194,61 +194,63 @@ class WebSocketService {
       transports: ['websocket', 'xhr-streaming', 'xhr-polling']
     }) as any;
 
-    this.socket.onopen = () => {
-      console.log('✅ WebSocket 连接成功');
-      this.reconnectAttempts = 0; // 重置重连次数
-      this.updateStatus('connected');
-      
-  
-      
-      // 调用连接成功回调
-      if (this.onConnectedCallback) {
-        this.onConnectedCallback();
-      }
-    };
-
-    this.socket.onmessage = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('📥 收到消息:', message);
+    if (this.socket) {
+      this.socket.onopen = () => {
+        console.log('✅ WebSocket 连接成功');
+        this.reconnectAttempts = 0; // 重置重连次数
+        this.updateStatus('connected');
         
-        // 检查是否包含 sessionId，自动存储
-        if (message.payload?.sessionId && !this.sessionId) {
-          console.log('💾 自动存储 sessionId:', message.payload.sessionId);
-          this.sessionId = message.payload.sessionId;
+    
+        
+        // 调用连接成功回调
+        if (this.onConnectedCallback) {
+          this.onConnectedCallback();
+        }
+      };
+
+      this.socket.onmessage = (event: MessageEvent) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('📥 收到消息:', message);
+          
+          // 检查是否包含 sessionId，自动存储
+          if (message.payload?.sessionId && !this.sessionId) {
+            console.log('💾 自动存储 sessionId:', message.payload.sessionId);
+            this.sessionId = message.payload.sessionId;
+          }
+          
+          if (this.messageHandler) {
+            this.messageHandler(message);
+          }
+        } catch (error) {
+          console.error('❌ 解析消息失败:', error);
+        }
+      };
+
+      this.socket.onerror = (error) => {
+        console.error('❌ WebSocket 错误:', error);
+        // onerror 后会立即触发 onclose，在 onclose 中处理
+      };
+
+      this.socket.onclose = (event: any) => {
+        console.group('🔌 WebSocket 关闭');
+        console.log('关闭码:', event.code);
+        console.log('关闭原因:', event.reason || '无');
+        console.log('是否正常关闭:', event.wasClean);
+        console.groupEnd();
+        
+        this.socket = null;
+        this.updateStatus('disconnected');
+        
+        // 调用断开连接回调
+        if (this.onDisconnectedCallback) {
+          this.onDisconnectedCallback();
         }
         
-        if (this.messageHandler) {
-          this.messageHandler(message);
-        }
-      } catch (error) {
-        console.error('❌ 解析消息失败:', error);
-      }
-    };
-
-    this.socket.onerror = (error) => {
-      console.error('❌ WebSocket 错误:', error);
-      // onerror 后会立即触发 onclose，在 onclose 中处理
-    };
-
-    this.socket.onclose = (event: any) => {
-      console.group('🔌 WebSocket 关闭');
-      console.log('关闭码:', event.code);
-      console.log('关闭原因:', event.reason || '无');
-      console.log('是否正常关闭:', event.wasClean);
-      console.groupEnd();
-      
-      this.socket = null;
-      this.updateStatus('disconnected');
-      
-      // 调用断开连接回调
-      if (this.onDisconnectedCallback) {
-        this.onDisconnectedCallback();
-      }
-      
-      // 根据关闭码判断处理策略
-      this.handleDisconnection(event.code);
-    };
+        // 根据关闭码判断处理策略
+        this.handleDisconnection(event.code);
+      };
+    }
   }
 
   private handleDisconnection(closeCode: number) {

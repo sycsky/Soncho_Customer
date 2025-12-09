@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ChatWindow } from './components/ChatWindow';
-import { MessageCircle } from 'lucide-react';
 import './index.css';
 import './components/ChatWindow.css';
 
