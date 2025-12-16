@@ -47,6 +47,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const initializeChat = async () => {
     try {
       setIsLoading(true);
+
+        let language = navigator.language;
+        if (language.startsWith('zh')) {
+          language = 'zh-TW';
+        }
+
+       
+        setBrowserLanguage(language); // 保存浏览器语言
       
       // 1. 尝试从本地获取客户信息
       let customerInfo = customerService.getLocalCustomerInfo();
@@ -66,6 +74,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           language = 'zh-TW';
         }
         metadata.language = language;
+       
         setBrowserLanguage(language); // 保存浏览器语言
 
         customerInfo = await customerService.getCustomerToken({
@@ -428,7 +437,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         <div className="chat-header-info">
           <Bot size={20} />
           <div>
-            <div className="chat-title">AI 客服</div>
+            <div className="chat-title">AI 客服 {browserLanguage}</div>
             <div className="chat-status">
               {isLoading ? (
                 <span className="status-text">连接中...</span>
