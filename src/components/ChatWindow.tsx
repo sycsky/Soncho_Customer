@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X, Minimize2, Maximize2, User, Bot, WifiOff, RefreshCw } from 'lucide-react';
-import websocketService, { ServerMessage, ConnectionStatus } from '../services/websocketService';
+import websocketService, { ServerMessage, ConnectionStatus, MessageAttachment } from '../services/websocketService';
 import customerService from '../services/customerService';
 import './ChatWindow.css';
 
@@ -10,6 +10,7 @@ interface Message {
   sender: 'user' | 'agent' | 'bot';
   timestamp: number;
   translationData?: Record<string, any>; // 新增: 翻译数据
+  attachments?: MessageAttachment[]; // 新增: 附件
 }
 
 interface ChatWindowProps {
@@ -151,6 +152,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             sender,
             timestamp: new Date(msg.createdAt).getTime(),
             translationData: msg.translationData, // 新增: 传递翻译数据
+            attachments: msg.attachments, // 新增: 加载附件
           };
         });
         
@@ -293,6 +295,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         sender,
         timestamp: new Date(msg.createdAt).getTime(),
         translationData: msg.translationData, // 新增: 传递翻译数据
+        attachments: msg.attachments, // 新增: 处理附件
       });
       
       // 自动存储 sessionId
@@ -495,6 +498,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     className="message-text" 
                     dangerouslySetInnerHTML={renderMessageContent(msg)} 
                   />
+                  {/* 新增: 渲染附件 */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="attachments">
+                      {msg.attachments.map((att, index) => (
+                        <div key={index} className="attachment-item">
+                          {att.type === 'IMAGE' ? (
+                            <a href={att.url} target="_blank" rel="noopener noreferrer">
+                              <img src={att.url} alt={att.name} className="attachment-image" />
+                            </a>
+                          ) : (
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="attachment-file">
+                              {att.name}
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="message-time">
                     {new Date(msg.timestamp).toLocaleTimeString('zh-CN', {
                       hour: '2-digit',
