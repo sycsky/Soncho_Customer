@@ -17,16 +17,19 @@ interface ChatWindowProps {
   isEmbedded?: boolean;
   onClose?: () => void;
   userName?: string;
+  initialMessage?: string;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   isEmbedded = false,
   onClose,
   userName,
+  initialMessage,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [hasSentInitialMessage, setHasSentInitialMessage] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
@@ -316,15 +319,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const addMessage = (message: Message) => {
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => {
+      // 检查是否存在相同 ID 的消息
+      const exists = prev.some((msg) => msg.id === message.id);
+      if (exists) {
+        return prev;
+      }
+      return [...prev, message];
+    });
   };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
+  const sendMessageContent = (messageContent: string, shouldClearInput: boolean) => {
+    if (!messageContent.trim()) return;
 
     if (!websocketService.isConnected()) {
       console.error('❌ WebSocket 未连接，无法发送消息');
@@ -352,7 +362,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     // 添加用户消息到界面
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: messageContent,
       sender: 'user',
       timestamp: Date.now(),
     };
@@ -360,8 +370,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
     // 发送到服务器（使用新格式）
     try {
-      websocketService.sendMessage(inputValue);
-      setInputValue('');
+      websocketService.sendMessage(messageContent);
+      if (shouldClearInput) {
+        setInputValue('');
+      }
     } catch (error) {
       console.error('发送消息失败:', error);
       addMessage({
@@ -371,6 +383,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         timestamp: Date.now(),
       });
     }
+  };
+
+  // 监听连接状态和初始消息
+  useEffect(() => {
+    if (isConnected && initialMessage && !hasSentInitialMessage) {
+      sendMessageContent(initialMessage, false);
+      setHasSentInitialMessage(true);
+    }
+  }, [isConnected, initialMessage, hasSentInitialMessage]);
+
+  const handleSend = () => {
+    sendMessageContent(inputValue, true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

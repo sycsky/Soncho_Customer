@@ -4,10 +4,36 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI 客服聊天</title>
+    <title>AI 客服聊天 - 开发预览</title>
+    <script>
+      // 模拟 Shopify 环境配置
+      window.AI_CHAT_CONFIG = {
+        mode: 'bubble', // 'bubble' 或 'search'
+        userName: '开发预览用户'
+      };
+    </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- 模拟宿主页面内容 -->
+    <div style="padding: 20px; font-family: sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
+      <h1>模拟 Shopify 商店页面</h1>
+      <p>这是一个模拟的宿主页面，用于测试 AI Widget 的嵌入效果。</p>
+      <p>您可以在这里看到 Widget 是如何悬浮在页面之上的。</p>
+      <div style="background: #f0f0f0; padding: 20px; margin: 20px 0; border-radius: 8px;">
+        <h3>测试说明：</h3>
+        <ul>
+          <li>默认配置为 <strong>Search</strong> 模式（居中搜索框）。</li>
+          <li>修改 index.html 中的 <code>window.AI_CHAT_CONFIG.mode</code> 为 'bubble' 可测试右下角悬浮球模式。</li>
+        </ul>
+      </div>
+      
+      <!-- 模拟一些页面内容以测试滚动 -->
+      <div style="height: 1000px; background: linear-gradient(to bottom, #fff, #f9f9f9);">
+        <p>（这里是长页面内容，用于测试滚动遮挡情况...）</p>
+      </div>
+    </div>
+
+    <!-- 开发环境入口：直接加载 Widget 逻辑 -->
+    <script type="module" src="/src/widget.tsx"></script>
   </body>
 </html>
