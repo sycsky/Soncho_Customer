@@ -35,6 +35,7 @@ export interface ReceivedMessage {
   customerId?: string;
   text: string;
   internal: boolean;
+  messageType?: string;
   translationData?: Record<string, any>;
   mentions?: string[];
   attachments?: MessageAttachment[];

@@ -74,9 +74,30 @@
 
 /* 适配移动端 */
 @media (max-width: 640px) {
+  .widget-launcher-bubble {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    /* 增加点击反馈 */
+    active: scale(0.95);
+  }
+
   .widget-launcher-search-container {
     top: auto;
-    bottom: 40px;
+    bottom: 90px; /* 位于启动按钮上方，留出空间 */
     transform: translateX(-50%);
+    width: 92%; /* 宽度适应屏幕 */
+    max-width: none;
+    padding: 0;
+  }
+  
+  .search-bar-wrapper {
+    padding: 10px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+  
+  .search-input {
+    font-size: 16px; /* 防止 iOS 缩放 */
   }
 }

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
+import './i18n/config';
 import { ChatWindow } from './components/ChatWindow';
 import { WidgetLauncher } from './components/WidgetLauncher';
+import { Toaster } from 'sonner';
 import './index.css';
 import './components/ChatWindow.css';
 
@@ -11,6 +13,10 @@ interface WidgetConfig {
   mode?: 'bubble' | 'search';
   apiBaseUrl?: string;
   wsUrl?: string;
+  primaryColor?: string;
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  welcomeMessage?: string;
+  shop?: string;
 }
 
 const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
@@ -30,19 +36,26 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
 
   return (
     <>
+      <Toaster position="top-center" richColors expand style={{ zIndex: 2147483647 }} />
       <WidgetLauncher 
         mode={config.mode || 'bubble'} 
         isOpen={isOpen} 
-        onOpen={handleOpen} 
+        onOpen={handleOpen}
+        primaryColor={config.primaryColor}
+        position={config.position}
       />
-      {isOpen && (
+      <div style={{ display: isOpen ? 'block' : 'none' }}>
         <ChatWindow
           isEmbedded={true}
           onClose={handleClose}
           userName={config.userName}
           initialMessage={initialMessage}
+          primaryColor={config.primaryColor}
+          welcomeMessage={config.welcomeMessage}
+          shop={config.shop}
+          position={config.position}
         />
-      )}
+      </div>
     </>
   );
 };

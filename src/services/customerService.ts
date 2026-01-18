@@ -4,6 +4,7 @@ export interface CustomerTokenRequest {
   name: string;
   channel: 'WEB' | 'WECHAT' | 'WHATSAPP' | 'LINE' | 'TELEGRAM' | 'FACEBOOK' | 'EMAIL' | 'SMS' | 'PHONE' | 'APP';
   channelId: string;
+  shop?: string; // 新增: Shopify 店铺域名
   metadata?: Record<string, any>; // 新增: 用于传递 URL 参数等
 }
 
@@ -31,6 +32,7 @@ export interface HistoryMessage {
   agentName?: string | null;
   text: string;
   internal: boolean;
+  messageType?: string;
   isMine: boolean; // 用于区分是否是自己发送的消息
   translationData?: Record<string, any>;
   mentionAgentIds?: string[];
@@ -133,6 +135,7 @@ class CustomerService {
       name: cachedName || request.name,
       channel: (cachedChannel as any) || request.channel,
       channelId: request.channelId,
+      shop: request.shop, // 新增: 传递 shop
       metadata: request.metadata, // 新增: 传递 metadata
     };
     

@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, X, Minimize2, Maximize2, User, Bot, WifiOff, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Send, X, Minimize2, Maximize2, User, Bot, WifiOff, RefreshCw, Globe } from 'lucide-react';
 import websocketService, { ServerMessage, ConnectionStatus, MessageAttachment } from '../services/websocketService';
 import customerService from '../services/customerService';
+import { ProductCard, GiftCard, DiscountCard, OrderCard } from './MessageCards';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './ChatWindow.css';
 
 interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'agent' | 'bot';
+  sender: 'user' | 'agent' | 'bot' | 'system';
   timestamp: number;
+  messageType?: string; // 新增: 消息类型
   translationData?: Record<string, any>; // 新增: 翻译数据
   attachments?: MessageAttachment[]; // 新增: 附件
 }
@@ -18,6 +23,10 @@ interface ChatWindowProps {
   onClose?: () => void;
   userName?: string;
   initialMessage?: string;
+  primaryColor?: string;
+  welcomeMessage?: string;
+  shop?: string;
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -25,7 +34,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   onClose,
   userName,
   initialMessage,
+  primaryColor,
+  welcomeMessage,
+  shop,
+  position = 'bottom-right',
 }) => {
+  const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -35,9 +49,50 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [customerId, setCustomerId] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
   const [customerToken, setCustomerToken] = useState<string>(''); // 新增: 保存 token
-  const [browserLanguage, setBrowserLanguage] = useState<string>('en'); // 新增: 浏览器语言
+  const [browserLanguage, setBrowserLanguage] = useState<string>('en');
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'zh', label: '简体中文' },
+    { code: 'zh-TW', label: '繁體中文' },
+    { code: 'ja', label: '日本語' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'fr', label: 'Français' },
+    { code: 'es', label: 'Español' },
+    { code: 'pt', label: 'Português' },
+    { code: 'ar', label: 'العربية' },
+    { code: 'ko', label: '한국어' },
+  ];
+
+  const changeLanguage = (code: string) => {
+    i18n.changeLanguage(code);
+    setBrowserLanguage(code);
+    setShowLanguageMenu(false);
+  };
+
+  const toggleLanguage = () => {
+    setShowLanguageMenu(!showLanguageMenu);
+  };
+
+  // 计算位置样式
+  const getPositionStyle = () => {
+    if (!isEmbedded) return {};
+    
+    switch (position) {
+      case 'bottom-left':
+        return { bottom: '20px', left: '20px', right: 'auto', top: 'auto' };
+      case 'top-right':
+        return { top: '20px', right: '20px', bottom: 'auto', left: 'auto' };
+      case 'top-left':
+        return { top: '20px', left: '20px', bottom: 'auto', right: 'auto' };
+      case 'bottom-right':
+      default:
+        return { bottom: '20px', right: '20px', top: 'auto', left: 'auto' };
+    }
+  };
 
   useEffect(() => {
     initializeChat();
@@ -85,6 +140,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           name,
           channel: 'WEB',
           channelId: browserId,
+          shop, // 传递 shop 参数
           metadata, // 传递 URL 参数
         });
         
@@ -121,7 +177,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsLoading(false);
       addMessage({
         id: 'error',
-        content: '连接客服失败，请刷新页面重试',
+        content: t('init_failed'),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -137,14 +193,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       
       if (historyData.content && historyData.content.length > 0) {
         // 转换历史消息格式
-        const historyMessages: Message[] = historyData.content.filter(msg => !msg.internal).map((msg) => {
-          let sender: 'user' | 'agent' | 'bot' = 'agent';
+        const historyMessages: Message[] = historyData.content
+          .filter(msg => !msg.internal && msg.senderType !== 'SYSTEM') // 过滤掉内部消息和系统消息
+          .map((msg) => {
+          let sender: 'user' | 'agent' | 'bot' | 'system' = 'agent';
           
           // 使用 isMine 来判断是否是自己发送的
           if (msg.isMine) {
             sender = 'user';
-          } else if (msg.senderType === 'SYSTEM') {
-            sender = 'bot';
           } else if (msg.senderType === 'AGENT') {
             sender = 'agent';
           }
@@ -154,6 +210,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             content: msg.text,
             sender,
             timestamp: new Date(msg.createdAt).getTime(),
+            messageType: msg.messageType, // 新增: 消息类型
             translationData: msg.translationData, // 新增: 传递翻译数据
             attachments: msg.attachments, // 新增: 加载附件
           };
@@ -170,7 +227,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         // 没有历史消息时显示欢迎语
         addMessage({
           id: '0',
-          content: '您好！我是 AI 客服助手，有什么可以帮您的吗？',
+          content: welcomeMessage || t('welcome_default'),
           sender: 'bot',
           timestamp: Date.now(),
         });
@@ -180,7 +237,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       // 加载失败时显示欢迎语
       addMessage({
         id: '0',
-        content: '您好！我是 AI 客服助手，有什么可以帮您的吗？',
+        content: welcomeMessage || t('welcome_default'),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -244,20 +301,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       return; // 不显示消息
     }
     
-    let errorMsg = '连接失败';
+    let errorMsg = t('connection_failed');
     
     switch (statusCode) {
       case 403:
-        errorMsg = '权限不足，无法连接';
+        errorMsg = t('permission_denied');
         break;
       case 500:
-        errorMsg = '服务器错误，请稍后重试';
+        errorMsg = t('server_error');
         break;
       case 503:
-        errorMsg = '服务暂时不可用';
+        errorMsg = t('service_unavailable');
         break;
       default:
-        errorMsg = `连接失败 (错误码: ${statusCode})`;
+        errorMsg = t('conn_failed_code', { code: statusCode });
     }
     
     addMessage({
@@ -279,15 +336,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     if (serverMessage.event === 'newMessage' && serverMessage.payload.message) {
       const msg = serverMessage.payload.message;
       
-      if (msg.internal) {
-        console.log('内部消息，不显示:', msg);
+      if (msg.internal || msg.senderType === 'SYSTEM') {
+        console.log('内部消息或系统消息，不显示:', msg);
         return;
       }
-      let sender: 'user' | 'agent' | 'bot' = 'agent';
+      let sender: 'user' | 'agent' | 'bot' | 'system' = 'agent';
       if (msg.senderType === 'CUSTOMER' || msg.customerId === customerId) {
         sender = 'user';
-      } else if (msg.senderType === 'SYSTEM') {
-        sender = 'bot';
       } else if (msg.senderType === 'AGENT') {
         sender = 'agent';
       }
@@ -297,6 +352,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         content: msg.text,
         sender,
         timestamp: new Date(msg.createdAt).getTime(),
+        messageType: msg.messageType, // 新增: 消息类型
         translationData: msg.translationData, // 新增: 传递翻译数据
         attachments: msg.attachments, // 新增: 处理附件
       });
@@ -340,7 +396,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.error('❌ WebSocket 未连接，无法发送消息');
       addMessage({
         id: Date.now().toString(),
-        content: '连接已断开，请稍候重试',
+        content: t('disconnected_retry'),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -352,7 +408,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.error('❌ 缺少 sessionId，无法发送消息');
       addMessage({
         id: Date.now().toString(),
-        content: '会话未初始化，请刷新页面重试',
+        content: t('session_not_init'),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -378,7 +434,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.error('发送消息失败:', error);
       addMessage({
         id: Date.now().toString(),
-        content: '消息发送失败，请重试',
+        content: t('send_failed'),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -407,17 +463,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getStatusText = () => {
     switch (connectionStatus) {
       case 'connecting':
-        return '连接中...';
+        return t('connecting');
       case 'connected':
-        return '在线';
+        return t('online');
       case 'reconnecting':
-        return '重新连接中...';
+        return t('reconnecting');
       case 'disconnected':
-        return '离线';
+        return t('offline');
       case 'error':
-        return '连接失败';
+        return t('connection_failed');
       default:
-        return '未知';
+        return t('unknown');
     }
   };
 
@@ -432,6 +488,39 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         return 'offline';
     } 
   }; 
+
+  const renderMessageBody = (msg: Message) => {
+    if (msg.messageType && msg.messageType.startsWith('CARD_')) {
+      try {
+        const cardData = JSON.parse(msg.content);
+        switch (msg.messageType) {
+          case 'CARD_PRODUCT':
+            return <ProductCard data={cardData} />;
+          case 'CARD_GIFT':
+            return <GiftCard data={cardData} />;
+          case 'CARD_DISCOUNT':
+            return <DiscountCard data={cardData} />;
+          case 'CARD_ORDER':
+            return <OrderCard data={cardData} onSendMessage={(content) => sendMessageContent(content, true)} />;
+          default:
+            return <div className="message-text">Unsupported card type</div>;
+        }
+      } catch (e) {
+        console.error('Failed to parse card data:', e);
+        return <div className="message-text">Invalid card data</div>;
+      }
+    }
+
+    const { content } = renderMessageContent(msg);
+
+    return (
+      <div className="message-text markdown-body">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  };
 
   const renderMessageContent = (msg: Message) => {
     let content = msg.content;
@@ -448,9 +537,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     }
 
-    // 替换换行符为 <br>
-    const contentWithBreaks = content.replace(/\n/g, '<br />');
-    return { __html: contentWithBreaks };
+    return { content };
   }; 
 
   const windowClassName = isEmbedded
@@ -458,16 +545,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     : 'chat-window-standalone';
 
   return (
-    <div className={windowClassName}>
+    <div className={windowClassName} style={getPositionStyle()}>
       {/* Header */}
-      <div className="chat-header">
+      <div className="chat-header" style={{ backgroundColor: primaryColor }}>
         <div className="chat-header-info">
           <Bot size={20} />
           <div>
-            <div className="chat-title">AI 客服 {browserLanguage}</div>
+            <div className="chat-title">{t('ai_agent')}</div>
             <div className="chat-status">
               {isLoading ? (
-                <span className="status-text">连接中...</span>
+                <span className="status-text">{t('connecting')}</span>
               ) : (
                 <>
                   <span className={`status-dot ${getStatusClass()}`}></span>
@@ -478,6 +565,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="chat-header-actions">
+          <div className="language-selector-wrapper">
+            <button onClick={toggleLanguage} className="icon-button" title={t('switch_language')}>
+              <Globe size={16} />
+            </button>
+            {showLanguageMenu && (
+              <div className="language-menu">
+                {languages.map(lang => (
+                  <div 
+                    key={lang.code} 
+                    onClick={() => changeLanguage(lang.code)} 
+                    className={`language-item ${i18n.language === lang.code ? 'active' : ''}`}
+                  >
+                    {lang.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {isEmbedded && (
             <button onClick={() => setIsMinimized(!isMinimized)} className="icon-button">
               {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
@@ -498,30 +603,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             {isLoading ? (
               <div className="chat-loading">
                 <div className="loading-spinner"></div>
-                <p>正在连接客服...</p>
+                <p>{t('connecting_message')}</p>
               </div>
             ) : !isConnected ? (
               <div className="chat-disconnected">
                 <WifiOff size={48} />
-                <p>连接已断开</p>
+                <p>{t('disconnected')}</p>
                 <p className="status-hint">{getStatusText()}</p>
                 <button onClick={() => websocketService.reconnect()} className="reconnect-button">
                   <RefreshCw size={16} />
-                  重新连接
+                  {t('reconnect')}
                 </button>
               </div>
             ) : null}
             
-            {messages.map((msg) => (
-              <div key={msg.id} className={`message message-${msg.sender}`}>
+            {messages.map((msg) => {
+              const isCard = msg.messageType && msg.messageType.startsWith('CARD_');
+
+              return (
+              <div key={msg.id} className={`message message-${msg.sender} ${isCard ? 'message-card-type' : ''}`}>
                 <div className="message-avatar">
                   {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
                 </div>
                 <div className="message-content">
-                  <div 
-                    className="message-text" 
-                    dangerouslySetInnerHTML={renderMessageContent(msg)} 
-                  />
+                  {renderMessageBody(msg)}
                   {/* 新增: 渲染附件 */}
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="attachments">
@@ -541,14 +646,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     </div>
                   )}
                   <div className="message-time">
-                    {new Date(msg.timestamp).toLocaleTimeString('zh-CN', {
+                    {new Date(msg.timestamp).toLocaleTimeString(i18n.language, {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
             <div ref={messagesEndRef} />
           </div>
 
@@ -557,7 +662,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <input
               type="text"
               className="chat-input"
-              placeholder="输入消息..."
+              placeholder={t('type_message')}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
@@ -565,8 +670,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <button 
               onClick={handleSend} 
               className="send-button" 
+              style={{ backgroundColor: inputValue.trim() && isConnected ? primaryColor : undefined }}
               disabled={!inputValue.trim() || !isConnected}
-              title={!isConnected ? '连接已断开' : ''}
+              title={!isConnected ? t('disconnected') : ''}
             >
               <Send size={18} />
             </button>

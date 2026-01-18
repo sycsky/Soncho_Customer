@@ -24,9 +24,9 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 380px;
-  height: 600px;
-  max-height: 80vh;
+  width: 494px;
+  height: 780px;
+  max-height: 90vh;
   background: var(--background-main);
   border-radius: 16px;
   box-shadow: 0 8px 32px var(--shadow-color);
@@ -112,7 +112,45 @@
 
 .chat-header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.language-selector-wrapper {
+  position: relative;
+}
+
+.language-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--background-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 120px;
+  z-index: 10000;
+  padding: 4px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.language-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-dark);
+  transition: background 0.2s;
+}
+
+.language-item:hover {
+  background: var(--background-secondary);
+}
+
+.language-item.active {
+  color: var(--primary-blue);
+  font-weight: 600;
+  background: rgba(0, 122, 255, 0.05);
 }
 
 .icon-button {
@@ -143,7 +181,9 @@
 
 .message {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   margin-bottom: 16px;
   animation: slideIn 0.3s ease;
 }
@@ -160,7 +200,7 @@
 }
 
 .message-user {
-  flex-direction: row-reverse;
+  align-items: flex-end;
 }
 
 .message-avatar {
@@ -186,6 +226,8 @@
 
 .message-content {
   max-width: 75%;
+  display: flex;
+  flex-direction: column;
 }
 
 .message-text {
@@ -336,10 +378,86 @@
 /* 响应式 */
 @media (max-width: 480px) {
   .chat-window-embedded {
-    width: calc(100vw - 40px);
-    height: calc(100vh - 40px);
-    bottom: 20px;
-    right: 20px;
+    width: 100vw !important;
+    height: 100vh !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    max-height: none;
+    border-radius: 0;
+    position: fixed; /* 确保固定定位 */
+  }
+  
+  /* 适配 iPhone 底部安全区域 */
+  .chat-input-area {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  .chat-header {
+    border-radius: 0;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top)); /* 适配刘海屏 */
+  }
+
+  .chat-input-area {
+    border-radius: 0;
+    padding: 12px;
+    gap: 8px;
+  }
+  
+  .chat-input {
+    font-size: 16px; /* 防止 iOS 缩放 */
+    padding: 10px 12px;
+  }
+  
+  .send-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .chat-messages {
+    padding: 12px;
+  }
+
+  .message-content {
+    max-width: 88%; /* 稍微减小宽度以适应小屏幕 */
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+  
+  .message {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .message-text {
+    padding: 10px 14px;
+    font-size: 15px; /* 稍微增大字体提高可读性 */
+  }
+  
+  .attachment-item {
+    max-width: 100%; /* 附件宽度自适应 */
+  }
+  
+  .icon-button {
+    width: 36px;
+    height: 36px; /* 增大点击区域 */
+  }
+  
+  /* 语言菜单在移动端更易点击 */
+  .language-menu {
+    width: 160px;
+    right: -10px;
+  }
+  
+  .language-item {
+    padding: 12px 16px;
+    font-size: 14px;
   }
 }
 
@@ -381,4 +499,102 @@
 
 .attachment-file:hover {
   background-color: var(--background-secondary);
+}
+
+/* Markdown Styles */
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-body p {
+  margin-bottom: 8px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body h1 { font-size: 1.5em; }
+.markdown-body h2 { font-size: 1.3em; }
+.markdown-body h3 { font-size: 1.1em; }
+
+.markdown-body ul, .markdown-body ol {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+
+.markdown-body li {
+  margin-bottom: 4px;
+}
+
+.markdown-body code {
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-body pre {
+  background-color: #f6f8fa;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.9em;
+  color: #24292e;
+}
+
+.markdown-body a {
+  color: var(--primary-blue);
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--border-color);
+  padding-left: 12px;
+  color: #6a737d;
+  margin-bottom: 12px;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.markdown-body th, .markdown-body td {
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.markdown-body th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+
+/* Card Message Override */
+.message-card-type .message-text {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
