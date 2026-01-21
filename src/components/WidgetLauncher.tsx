@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageCircle, Search } from 'lucide-react';
 import './WidgetLauncher.css';
 
@@ -17,6 +18,7 @@ export const WidgetLauncher: React.FC<WidgetLauncherProps> = ({
   primaryColor, 
   position = 'bottom-right' 
 }) => {
+  const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
 
   if (isOpen) return null; // Hide launcher when chat is open

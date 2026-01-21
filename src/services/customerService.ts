@@ -126,9 +126,10 @@ class CustomerService {
    * 优先使用缓存中的 name 和 channel
    */
   async getCustomerToken(request: CustomerTokenRequest): Promise<CustomerTokenResponse> {
-    // 从缓存中读取 name 和 channel
-    const cachedName = localStorage.getItem('customer_name');
-    const cachedChannel = localStorage.getItem('customer_channel');
+    // 从缓存中读取 name 和 channel (带 shop 参数)
+    const suffix = request.shop ? `_${request.shop}` : '';
+    const cachedName = localStorage.getItem(`customer_name${suffix}`);
+    const cachedChannel = localStorage.getItem(`customer_channel${suffix}`);
     
     // 如果缓存中有 name 和 channel,则使用缓存的值
     const finalRequest: CustomerTokenRequest = {
@@ -193,27 +194,29 @@ class CustomerService {
   /**
    * 保存客户信息到本地
    */
-  saveCustomerInfo(info: CustomerTokenResponse): void {
-    localStorage.setItem('customer_id', info.customerId);
-    localStorage.setItem('customer_token', info.token);
-    localStorage.setItem('customer_name', info.name);
-    localStorage.setItem('customer_channel', info.channel);
-    localStorage.setItem('customer_session_id', info.sessionId);
+  saveCustomerInfo(info: CustomerTokenResponse, shop?: string): void {
+    const suffix = shop ? `_${shop}` : '';
+    localStorage.setItem(`customer_id${suffix}`, info.customerId);
+    localStorage.setItem(`customer_token${suffix}`, info.token);
+    localStorage.setItem(`customer_name${suffix}`, info.name);
+    localStorage.setItem(`customer_channel${suffix}`, info.channel);
+    localStorage.setItem(`customer_session_id${suffix}`, info.sessionId);
     if (info.groupId) {
-      localStorage.setItem('customer_group_id', info.groupId);
+      localStorage.setItem(`customer_group_id${suffix}`, info.groupId);
     }
   }
 
   /**
    * 获取本地保存的客户信息
    */
-  getLocalCustomerInfo(): CustomerTokenResponse | null {
-    const customerId = localStorage.getItem('customer_id');
-    const token = localStorage.getItem('customer_token');
-    const name = localStorage.getItem('customer_name');
-    const channel = localStorage.getItem('customer_channel');
-    const sessionId = localStorage.getItem('customer_session_id');
-    const groupId = localStorage.getItem('customer_group_id');
+  getLocalCustomerInfo(shop?: string): CustomerTokenResponse | null {
+    const suffix = shop ? `_${shop}` : '';
+    const customerId = localStorage.getItem(`customer_id${suffix}`);
+    const token = localStorage.getItem(`customer_token${suffix}`);
+    const name = localStorage.getItem(`customer_name${suffix}`);
+    const channel = localStorage.getItem(`customer_channel${suffix}`);
+    const sessionId = localStorage.getItem(`customer_session_id${suffix}`);
+    const groupId = localStorage.getItem(`customer_group_id${suffix}`);
 
     if (customerId && token && name && channel && sessionId) {
       return { 
@@ -232,13 +235,14 @@ class CustomerService {
   /**
    * 清除本地客户信息
    */
-  clearCustomerInfo(): void {
-    localStorage.removeItem('customer_id');
-    localStorage.removeItem('customer_token');
-    localStorage.removeItem('customer_name');
-    localStorage.removeItem('customer_channel');
-    localStorage.removeItem('customer_session_id');
-    localStorage.removeItem('customer_group_id');
+  clearCustomerInfo(shop?: string): void {
+    const suffix = shop ? `_${shop}` : '';
+    localStorage.removeItem(`customer_id${suffix}`);
+    localStorage.removeItem(`customer_token${suffix}`);
+    localStorage.removeItem(`customer_name${suffix}`);
+    localStorage.removeItem(`customer_channel${suffix}`);
+    localStorage.removeItem(`customer_session_id${suffix}`);
+    localStorage.removeItem(`customer_group_id${suffix}`);
   }
 
   /**

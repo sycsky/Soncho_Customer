@@ -567,6 +567,16 @@
   text-decoration: underline;
 }
 
+/* 修复：用户消息背景是蓝色，链接需要改成白色才能看清 */
+.message-user .markdown-body a {
+  color: var(--text-light);
+  text-decoration: underline;
+}
+
+.message-user .markdown-body a:hover {
+  opacity: 0.9;
+}
+
 .markdown-body blockquote {
   border-left: 4px solid var(--border-color);
   padding-left: 12px;

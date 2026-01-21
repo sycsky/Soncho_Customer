@@ -21,9 +21,13 @@ interface WidgetConfig {
 
 const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
   const [initialMessage, setInitialMessage] = useState<string | undefined>(undefined);
 
   const handleOpen = (msg?: string) => {
+    if (!hasOpened) {
+      setHasOpened(true);
+    }
     setInitialMessage(msg);
     setIsOpen(true);
   };
@@ -45,16 +49,18 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
         position={config.position}
       />
       <div style={{ display: isOpen ? 'block' : 'none' }}>
-        <ChatWindow
-          isEmbedded={true}
-          onClose={handleClose}
-          userName={config.userName}
-          initialMessage={initialMessage}
-          primaryColor={config.primaryColor}
-          welcomeMessage={config.welcomeMessage}
-          shop={config.shop}
-          position={config.position}
-        />
+        {hasOpened && (
+          <ChatWindow
+            isEmbedded={true}
+            onClose={handleClose}
+            userName={config.userName}
+            initialMessage={initialMessage}
+            primaryColor={config.primaryColor}
+            welcomeMessage={config.welcomeMessage}
+            shop={config.shop}
+            position={config.position}
+          />
+        )}
       </div>
     </>
   );

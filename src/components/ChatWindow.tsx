@@ -107,35 +107,59 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       setIsLoading(true);
 
-        let language = navigator.language;
-        if (language.startsWith('zh')) {
-          language = 'zh-TW';
+      // 语言处理逻辑：缓存 -> 浏览器匹配 -> 默认英文
+      let targetLang = 'en';
+      const cachedLang = localStorage.getItem('i18nextLng');
+      
+      // 检查缓存语言是否有效（在支持列表中）
+      if (cachedLang && languages.some(l => l.code === cachedLang)) {
+        targetLang = cachedLang;
+      } else {
+        // 没有有效缓存，尝试浏览器语言
+        let browserLang = navigator.language;
+        
+        // 特殊处理中文
+        if (browserLang === 'zh-CN') {
+          browserLang = 'zh';
+        } else if (browserLang.startsWith('zh') && browserLang !== 'zh') {
+          // 保持 zh-TW 等
+        } else if (browserLang.startsWith('zh')) {
+          browserLang = 'zh-TW';
         }
 
-       
-        setBrowserLanguage(language); // 保存浏览器语言
+        // 检查是否在支持列表中
+        const isSupported = languages.some(l => l.code === browserLang);
+        if (isSupported) {
+          targetLang = browserLang;
+        } else {
+          targetLang = 'en';
+        }
+      }
+
+      // 如果当前语言不一致，切换语言
+      if (i18n.language !== targetLang) {
+        i18n.changeLanguage(targetLang);
+      }
+      setBrowserLanguage(targetLang);
       
-      // 1. 尝试从本地获取客户信息
-      let customerInfo = customerService.getLocalCustomerInfo();
+      // 1. 尝试从本地获取客户信息 (带 shop 参数)
+      let customerInfo = customerService.getLocalCustomerInfo(shop);
       
       // 2. 如果没有本地信息，从服务器获取
       if (!customerInfo) {
         const browserId = customerService.generateBrowserId();
-        const name = userName || `访客_${new Date().getTime().toString().slice(-6)}`;
+        // 生成基础名称并添加随机5位数字后缀
+        const baseName = userName || `访客_${new Date().getTime().toString().slice(-6)}`;
+        const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+        const name = `${baseName}_${randomSuffix}`;
         
         // 从 URL 读取参数
         const urlParams = new URLSearchParams(window.location.search);
         const metadata = Object.fromEntries(urlParams.entries());
 
         // 新增: 获取浏览器语言并添加到 metadata
-        let language = navigator.language;
-        if (language.startsWith('zh')) {
-          language = 'zh-TW';
-        }
-        metadata.language = language;
+        metadata.language = targetLang;
        
-        setBrowserLanguage(language); // 保存浏览器语言
-
         customerInfo = await customerService.getCustomerToken({
           name,
           channel: 'WEB',
@@ -144,8 +168,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           metadata, // 传递 URL 参数
         });
         
-        // 保存到本地
-        customerService.saveCustomerInfo(customerInfo);
+        // 保存到本地 (带 shop 参数)
+        customerService.saveCustomerInfo(customerInfo, shop);
       }
       
       setCustomerId(customerInfo.customerId);
@@ -250,8 +274,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log('⚠️ Token 可能已过期，正在刷新...');
       
       // 从缓存中读取 name 和 channel，不创建新用户
-      const cachedName = localStorage.getItem('customer_name');
-      const cachedChannel = localStorage.getItem('customer_channel');
+      const localInfo = customerService.getLocalCustomerInfo(shop);
+      const cachedName = localInfo?.name;
+      const cachedChannel = localInfo?.channel;
       const browserId = customerService.generateBrowserId();
       
       // 必须使用缓存的身份信息
@@ -266,10 +291,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         name: cachedName,
         channel: cachedChannel as any,
         channelId: browserId,
+        shop, // 传递 shop 参数
       });
       
-      // 保存新的客户信息
-      customerService.saveCustomerInfo(customerInfo);
+      // 保存新的客户信息 (带 shop 参数)
+      customerService.saveCustomerInfo(customerInfo, shop);
       setCustomerId(customerInfo.customerId);
       setCustomerToken(customerInfo.token);
       
@@ -514,7 +540,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const { content } = renderMessageContent(msg);
 
     return (
-      <div className="message-text markdown-body">
+      <div 
+        className="message-text markdown-body"
+        style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}
+      >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {content}
         </ReactMarkdown>
@@ -622,7 +651,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
               return (
               <div key={msg.id} className={`message message-${msg.sender} ${isCard ? 'message-card-type' : ''}`}>
-                <div className="message-avatar">
+                <div className="message-avatar" style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}>
                   {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
                 </div>
                 <div className="message-content">
@@ -670,7 +699,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <button 
               onClick={handleSend} 
               className="send-button" 
-              style={{ backgroundColor: inputValue.trim() && isConnected ? primaryColor : undefined }}
+              style={{ backgroundColor: primaryColor }}
               disabled={!inputValue.trim() || !isConnected}
               title={!isConnected ? t('disconnected') : ''}
             >
