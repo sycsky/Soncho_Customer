@@ -475,6 +475,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [isConnected, initialMessage, hasSentInitialMessage]);
 
+  // 监听语言变化，实时更新欢迎语
+  useEffect(() => {
+    if (!welcomeMessage) {
+      setMessages((prevMessages) => 
+        prevMessages.map((msg) => {
+          if (msg.id === '0') {
+            return {
+              ...msg,
+              content: t('welcome_default')
+            };
+          }
+          return msg;
+        })
+      );
+    }
+  }, [i18n.language, t, welcomeMessage]);
+
   const handleSend = () => {
     sendMessageContent(inputValue, true);
   };
