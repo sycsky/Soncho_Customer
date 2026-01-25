@@ -9,10 +9,31 @@
       // 模拟 Shopify 环境配置
       window.AI_CHAT_CONFIG = {
         mode: 'bubble', // 'bubble' 或 'search'
-        userName: '开发预览用户',
-        primaryColor: "red",
+        userName: 'test guest',
+        primaryColor: "#0c72af",
         position: "bottom-right",
-        shop: "test1-239283829347123859138852.myshopify.com"
+        shop: "test1-239283829347123859138852.myshopify.com",
+        isLoggedIn: true,
+        customer: {
+          id: 1234567890,
+          email: "demo_customer@example.com",
+          firstName: "Demo",
+          lastName: "Customer",
+          name: "Demo Customer",
+          phone: "+1-555-0100",
+          tags: ["vip", "newsletter"],
+          acceptsMarketing: true,
+          ordersCount: 3,
+          totalSpent: "245.50",
+          defaultAddress: {
+            address1: "123 Main St",
+            address2: "Apt 4B",
+            city: "San Francisco",
+            province: "CA",
+            country: "US",
+            zip: "94105"
+          }
+        }
       };
     </script>
   </head>

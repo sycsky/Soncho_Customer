@@ -7,6 +7,7 @@ import { ProductCard, GiftCard, DiscountCard, OrderCard } from './MessageCards';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './ChatWindow.css';
+import { ShopifyCustomer } from '../types/shopify';
 
 interface Message {
   id: string;
@@ -26,6 +27,8 @@ interface ChatWindowProps {
   primaryColor?: string;
   welcomeMessage?: string;
   shop?: string;
+  shopifyLoggedIn?: boolean;
+  shopifyCustomer?: ShopifyCustomer;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 }
 
@@ -37,6 +40,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   primaryColor,
   welcomeMessage,
   shop,
+  shopifyLoggedIn = false,
+  shopifyCustomer,
   position = 'bottom-right',
 }) => {
   const { t, i18n } = useTranslation();
@@ -66,6 +71,47 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     { code: 'ar', label: 'العربية' },
     { code: 'ko', label: '한국어' },
   ];
+
+  const buildShopifyName = (customer: ShopifyCustomer, customerId: string | null) => {
+    if (customer.name && customer.name.trim()) {
+      return customer.name.trim();
+    }
+    const first = customer.firstName?.trim() || '';
+    const last = customer.lastName?.trim() || '';
+    const fullName = `${first} ${last}`.trim();
+    if (fullName) {
+      return fullName;
+    }
+    if (customer.email && customer.email.trim()) {
+      return customer.email.trim();
+    }
+    if (customer.phone && customer.phone.trim()) {
+      return customer.phone.trim();
+    }
+    return t('shopify_customer_fallback_name', { id: customerId || '' });
+  };
+
+  const buildShopifyCustomerInfo = (customer: ShopifyCustomer) => {
+    const info: Record<string, any> = { ...customer };
+    delete info.id;
+    delete info.email;
+    delete info.phone;
+    delete info.name;
+    return info;
+  };
+
+  const getShopifyIdentity = () => {
+    if (!shopifyLoggedIn || !shopifyCustomer || !shopifyCustomer.id) return null;
+    const shopifyCustomerId = String(shopifyCustomer.id);
+    const name = buildShopifyName(shopifyCustomer, shopifyCustomerId);
+    return {
+      shopifyCustomerId,
+      name,
+      email: shopifyCustomer.email,
+      phone: shopifyCustomer.phone,
+      shopifyCustomerInfo: buildShopifyCustomerInfo(shopifyCustomer),
+    };
+  };
 
   const changeLanguage = (code: string) => {
     i18n.changeLanguage(code);
@@ -142,24 +188,72 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       setBrowserLanguage(targetLang);
       
-      // 1. 尝试从本地获取客户信息 (带 shop 参数)
+      // 1. Shopify 登录信息（如有）
+      const shopifyIdentity = getShopifyIdentity();
+
+      // 2. 尝试从本地获取客户信息 (带 shop 参数)
       let customerInfo = customerService.getLocalCustomerInfo(shop);
-      
-      // 2. 如果没有本地信息，从服务器获取
+
+      // 3. 构建通用 metadata（URL 参数 + 语言）
+      const urlParams = new URLSearchParams(window.location.search);
+      const metadata = Object.fromEntries(urlParams.entries());
+      metadata.language = targetLang;
+
+      // 4. Shopify 登录时优先覆盖客户信息
+      if (shopifyIdentity) {
+        const cachedShopifyId = customerService.getLocalShopifyCustomerId(shop);
+        const canReuseLocal = !!customerInfo && cachedShopifyId === shopifyIdentity.shopifyCustomerId;
+
+        if (!customerInfo || !canReuseLocal) {
+          const browserId = customerService.generateBrowserId();
+          customerInfo = await customerService.getCustomerToken({
+            name: shopifyIdentity.name,
+            email: shopifyIdentity.email,
+            phone: shopifyIdentity.phone,
+            channel: 'WEB',
+            channelId: browserId,
+            channelUserId: shopifyIdentity.shopifyCustomerId,
+            shop,
+            metadata,
+            shopifyCustomerId: shopifyIdentity.shopifyCustomerId,
+            shopifyCustomerInfo: shopifyIdentity.shopifyCustomerInfo,
+            preferCachedIdentity: false,
+          });
+
+          customerService.saveCustomerInfo(customerInfo, shop);
+        } else if (customerInfo.customerId) {
+          try {
+            await customerService.updateCustomer(
+              customerInfo.customerId,
+              {
+                name: shopifyIdentity.name,
+                email: shopifyIdentity.email,
+                phone: shopifyIdentity.phone,
+                shopifyCustomerId: shopifyIdentity.shopifyCustomerId,
+                shopifyCustomerInfo: shopifyIdentity.shopifyCustomerInfo,
+              },
+              customerInfo.token
+            );
+          } catch (error) {
+            console.error('更新 Shopify 客户信息失败:', error);
+          }
+        }
+
+        customerService.saveShopifyCustomerData(
+          shopifyIdentity.shopifyCustomerId,
+          shopifyIdentity.shopifyCustomerInfo,
+          shop
+        );
+      }
+
+      // 5. 如果没有本地信息，从服务器获取
       if (!customerInfo) {
         const browserId = customerService.generateBrowserId();
         // 生成基础名称并添加随机5位数字后缀
         const baseName = userName || `访客_${new Date().getTime().toString().slice(-6)}`;
         const randomSuffix = Math.floor(10000 + Math.random() * 90000);
         const name = `${baseName}_${randomSuffix}`;
-        
-        // 从 URL 读取参数
-        const urlParams = new URLSearchParams(window.location.search);
-        const metadata = Object.fromEntries(urlParams.entries());
 
-        // 新增: 获取浏览器语言并添加到 metadata
-        metadata.language = targetLang;
-       
         customerInfo = await customerService.getCustomerToken({
           name,
           channel: 'WEB',
@@ -167,7 +261,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           shop, // 传递 shop 参数
           metadata, // 传递 URL 参数
         });
-        
+
         // 保存到本地 (带 shop 参数)
         customerService.saveCustomerInfo(customerInfo, shop);
       }
@@ -278,24 +372,44 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const cachedName = localInfo?.name;
       const cachedChannel = localInfo?.channel;
       const browserId = customerService.generateBrowserId();
+      const shopifyIdentity = getShopifyIdentity();
       
       // 必须使用缓存的身份信息
-      if (!cachedName || !cachedChannel) {
+      if (!cachedName && !shopifyIdentity?.name) {
         console.error('❌ 缺少缓存的用户信息，无法刷新 Token');
         return null;
       }
       
-      console.log('🔄 使用缓存身份刷新 Token:', { name: cachedName, channel: cachedChannel });
-      
+      const resolvedName = shopifyIdentity?.name || cachedName || '';
+      const resolvedChannel = (cachedChannel as any) || 'WEB';
+      const metadata = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+      metadata.language = browserLanguage;
+
+      console.log('🔄 使用缓存身份刷新 Token:', { name: resolvedName, channel: resolvedChannel });
+
       const customerInfo = await customerService.getCustomerToken({
-        name: cachedName,
-        channel: cachedChannel as any,
+        name: resolvedName,
+        channel: resolvedChannel,
         channelId: browserId,
+        channelUserId: shopifyIdentity?.shopifyCustomerId,
+        email: shopifyIdentity?.email,
+        phone: shopifyIdentity?.phone,
         shop, // 传递 shop 参数
+        metadata,
+        shopifyCustomerId: shopifyIdentity?.shopifyCustomerId,
+        shopifyCustomerInfo: shopifyIdentity?.shopifyCustomerInfo,
+        preferCachedIdentity: shopifyIdentity ? false : true,
       });
       
       // 保存新的客户信息 (带 shop 参数)
       customerService.saveCustomerInfo(customerInfo, shop);
+      if (shopifyIdentity) {
+        customerService.saveShopifyCustomerData(
+          shopifyIdentity.shopifyCustomerId,
+          shopifyIdentity.shopifyCustomerInfo,
+          shop
+        );
+      }
       setCustomerId(customerInfo.customerId);
       setCustomerToken(customerInfo.token);
       
@@ -568,19 +682,51 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   };
 
+  const getTranslationCandidates = () => {
+    const candidates: string[] = [];
+    const push = (code?: string) => {
+      if (code && !candidates.includes(code)) {
+        candidates.push(code);
+      }
+    };
+
+    const addAliases = (code?: string) => {
+      if (!code) return;
+      if (code === 'zh') {
+        push('zh-CN');
+        return;
+      }
+      if (code === 'zh-CN') {
+        push('zh');
+        return;
+      }
+      if (code === 'zh-TW') {
+        push('zh');
+        return;
+      }
+      if (code.startsWith('zh-')) {
+        push('zh');
+        push('zh-CN');
+      }
+    };
+
+    push(browserLanguage);
+    push(i18n.language);
+    addAliases(browserLanguage);
+    addAliases(i18n.language);
+
+    return candidates;
+  };
+
   const renderMessageContent = (msg: Message) => {
     let content = msg.content;
 
-    // 检查是否有翻译数据，并且不是用户自己发的消息
     if (msg.sender !== 'user' && msg.translationData) {
-      // 尝试获取当前语言的翻译
-      const translatedText = msg.translationData[browserLanguage];
-      if (translatedText) {
-        content = translatedText;
-      } else if (msg.translationData.originalText) {
-        // 如果没有，回退到 originalText
-        content = msg.translationData.originalText;
-      }
+      const candidates = getTranslationCandidates();
+      const translatedText = candidates
+        .map((lang) => msg.translationData?.[lang])
+        .find((text) => !!text);
+      content = translatedText || msg.translationData.originalText || content;
     }
 
     return { content };

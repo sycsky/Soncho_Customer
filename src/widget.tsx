@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './i18n/config';
+import { setRuntimeConfig } from './config';
 import { ChatWindow } from './components/ChatWindow';
 import { WidgetLauncher } from './components/WidgetLauncher';
 import { Toaster } from 'sonner';
 import './index.css';
 import './components/ChatWindow.css';
+import { ShopifyCustomer } from './types/shopify';
 
 // Widget 配置
 interface WidgetConfig {
@@ -17,6 +19,8 @@ interface WidgetConfig {
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
   welcomeMessage?: string;
   shop?: string;
+  isLoggedIn?: boolean;
+  customer?: ShopifyCustomer | null;
 }
 
 const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
@@ -58,6 +62,8 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
             primaryColor={config.primaryColor}
             welcomeMessage={config.welcomeMessage}
             shop={config.shop}
+            shopifyLoggedIn={config.isLoggedIn}
+            shopifyCustomer={config.customer || undefined}
             position={config.position}
           />
         )}
@@ -73,6 +79,13 @@ class AIChatWidget {
 
   constructor(config?: WidgetConfig) {
     this.config = config || {};
+    
+    // 更新运行时配置
+    setRuntimeConfig({
+      apiBaseUrl: this.config.apiBaseUrl,
+      wsUrl: this.config.wsUrl
+    });
+
     this.init();
   }
 

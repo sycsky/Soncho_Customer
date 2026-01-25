@@ -4,8 +4,14 @@ export interface CustomerTokenRequest {
   name: string;
   channel: 'WEB' | 'WECHAT' | 'WHATSAPP' | 'LINE' | 'TELEGRAM' | 'FACEBOOK' | 'EMAIL' | 'SMS' | 'PHONE' | 'APP';
   channelId: string;
+  channelUserId?: string;
+  email?: string;
+  phone?: string;
   shop?: string; // 新增: Shopify 店铺域名
   metadata?: Record<string, any>; // 新增: 用于传递 URL 参数等
+  shopifyCustomerId?: string;
+  shopifyCustomerInfo?: Record<string, any>;
+  preferCachedIdentity?: boolean;
 }
 
 export interface CustomerTokenResponse {
@@ -15,6 +21,14 @@ export interface CustomerTokenResponse {
   channel: string;
   sessionId: string;  // 新增
   groupId?: string;   // 新增
+}
+
+export interface UpdateCustomerRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+  shopifyCustomerId?: string;
+  shopifyCustomerInfo?: Record<string, any>;
 }
 
 export interface ApiResponse<T> {
@@ -128,16 +142,23 @@ class CustomerService {
   async getCustomerToken(request: CustomerTokenRequest): Promise<CustomerTokenResponse> {
     // 从缓存中读取 name 和 channel (带 shop 参数)
     const suffix = request.shop ? `_${request.shop}` : '';
-    const cachedName = localStorage.getItem(`customer_name${suffix}`);
-    const cachedChannel = localStorage.getItem(`customer_channel${suffix}`);
+    const shouldUseCache = request.preferCachedIdentity !== false;
+    const cachedName = shouldUseCache ? localStorage.getItem(`customer_name${suffix}`) : null;
+    const cachedChannel = shouldUseCache ? localStorage.getItem(`customer_channel${suffix}`) : null;
     
     // 如果缓存中有 name 和 channel,则使用缓存的值
     const finalRequest: CustomerTokenRequest = {
       name: cachedName || request.name,
       channel: (cachedChannel as any) || request.channel,
       channelId: request.channelId,
+      channelUserId: request.channelUserId,
+      email: request.email,
+      phone: request.phone,
       shop: request.shop, // 新增: 传递 shop
       metadata: request.metadata, // 新增: 传递 metadata
+      shopifyCustomerId: request.shopifyCustomerId,
+      shopifyCustomerInfo: request.shopifyCustomerInfo,
+      preferCachedIdentity: request.preferCachedIdentity,
     };
     
     console.log('📤 请求 customer-token:', {
@@ -243,6 +264,30 @@ class CustomerService {
     localStorage.removeItem(`customer_channel${suffix}`);
     localStorage.removeItem(`customer_session_id${suffix}`);
     localStorage.removeItem(`customer_group_id${suffix}`);
+    localStorage.removeItem(`shopify_customer_id${suffix}`);
+    localStorage.removeItem(`shopify_customer_info${suffix}`);
+  }
+
+  saveShopifyCustomerData(shopifyCustomerId: string, shopifyCustomerInfo: Record<string, any>, shop?: string): void {
+    const suffix = shop ? `_${shop}` : '';
+    localStorage.setItem(`shopify_customer_id${suffix}`, shopifyCustomerId);
+    localStorage.setItem(`shopify_customer_info${suffix}`, JSON.stringify(shopifyCustomerInfo || {}));
+  }
+
+  getLocalShopifyCustomerId(shop?: string): string | null {
+    const suffix = shop ? `_${shop}` : '';
+    return localStorage.getItem(`shopify_customer_id${suffix}`);
+  }
+
+  getLocalShopifyCustomerInfo(shop?: string): Record<string, any> | null {
+    const suffix = shop ? `_${shop}` : '';
+    const raw = localStorage.getItem(`shopify_customer_info${suffix}`);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -287,6 +332,27 @@ class CustomerService {
     });
 
     return result.data;
+  }
+
+  async updateCustomer(
+    customerId: string,
+    payload: UpdateCustomerRequest,
+    token?: string
+  ): Promise<ApiResponse<any>> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/customers/${customerId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update customer: ${response.statusText}`);
+    }
+
+    return response.json();
   }
 }
 

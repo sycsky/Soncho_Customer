@@ -1,6 +1,6 @@
 {
-  "name": "ai-agent-client",
-  "private": true,
+  "name": "soncho-customer-widget",
+  "private": false,
   "version": "1.0.0",
   "type": "module",
   "description": "AI Agent Customer Chat Widget - 可嵌入式聊天组件",
@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:widget": "vite build --mode widget",
+    "prepublishOnly": "npm run build:widget",
     "preview": "vite preview",
     "start": "serve -s dist -l 3000"
   },
@@ -30,6 +31,7 @@
     "@types/sockjs-client": "^1.5.4",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.2.2",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vite-plugin-css-injected-by-js": "^3.5.2"
   }
 }
