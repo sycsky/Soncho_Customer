@@ -162,7 +162,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   // 计算位置样式
   const getPositionStyle = () => {
     if (!isEmbedded) return {};
-    
+
     switch (position) {
       case 'bottom-left':
         return { bottom: '20px', left: '20px', right: 'auto', top: 'auto' };
@@ -225,14 +225,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       // 语言处理逻辑：缓存 -> 浏览器匹配 -> 默认英文
       let targetLang = 'en';
       const cachedLang = localStorage.getItem('i18nextLng');
-      
+
       // 检查缓存语言是否有效（在支持列表中）
       if (cachedLang && languages.some(l => l.code === cachedLang)) {
         targetLang = cachedLang;
       } else {
         // 没有有效缓存，尝试浏览器语言
         let browserLang = navigator.language;
-        
+
         // 特殊处理中文
         if (browserLang === 'zh-CN') {
           browserLang = 'zh';
@@ -445,7 +445,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const cachedChannel = localInfo?.channel;
       const browserId = customerService.generateBrowserId();
       const shopifyIdentity = getShopifyIdentity();
-      
+
       // 必须使用缓存的身份信息
       if (!cachedName && !shopifyIdentity?.name) {
         console.error('❌ 缺少缓存的用户信息，无法刷新 Token');
@@ -510,7 +510,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     // 401 Token 过期时不显示提示，自动刷新即可
     if (statusCode === 401) {
       console.log('⚠️ Token 过期，正在自动刷新...');
-      return; 
+      return;
     }
     
     // 用户要求不要在聊天框显示连接错误消息，仅记录日志
@@ -655,7 +655,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         } else {
           sender = 'bot';
         }
-        
+
         // 收到非用户消息，解除节流
         setIsThrottled(false);
         localStorage.removeItem('chat_waiting_for_reply');
@@ -686,7 +686,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           }
         }
       }
-      
+
       // 自动存储 sessionId
       if (serverMessage.payload.sessionId) {
         websocketService.setSessionId(serverMessage.payload.sessionId);
@@ -828,7 +828,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   // 监听语言变化，实时更新欢迎语
   useEffect(() => {
     if (!welcomeMessage) {
-      setMessages((prevMessages) => 
+      setMessages((prevMessages) =>
         prevMessages.map((msg) => {
           if (msg.id === '0') {
             return {
@@ -856,9 +856,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
     try {
       setIsUploading(true);
-      
+
       const response = await fileService.uploadFile(file, customerToken);
-      
+
       const attachment: MessageAttachment = {
         type: file.type.startsWith('image/') ? 'IMAGE' : 'FILE',
         url: response.url?.trim(), // 确保 URL 去除空格
@@ -966,7 +966,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
 
     return (
-      <div 
+      <div
         className="message-text markdown-body"
         style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}
       >
@@ -1059,9 +1059,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             {showLanguageMenu && (
               <div className="language-menu">
                 {languages.map(lang => (
-                  <div 
-                    key={lang.code} 
-                    onClick={() => changeLanguage(lang.code)} 
+                  <div
+                    key={lang.code}
+                    onClick={() => changeLanguage(lang.code)}
                     className={`language-item ${i18n.language === lang.code ? 'active' : ''}`}
                   >
                     {lang.label}
@@ -1092,24 +1092,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages */}
       {!isMinimized && (
-        <>
+        <div className="chat-body">
           <div className="chat-messages">
-            {isLoading ? (
+            {isLoading && (
               <div className="chat-loading">
                 <div className="loading-spinner"></div>
                 <p>{t('connecting_message')}</p>
               </div>
-            ) : !isConnected ? (
-              <div className="chat-disconnected">
-                <WifiOff size={48} />
-                <p>{t('disconnected')}</p>
-                <p className="status-hint">{getStatusText()}</p>
-                <button onClick={() => websocketService.reconnect()} className="reconnect-button">
-                  <RefreshCw size={16} />
-                  {t('reconnect')}
-                </button>
-              </div>
-            ) : null}
+            )}
             
             {messages.map((msg) => {
               const isCard = msg.messageType && msg.messageType.startsWith('CARD_');
@@ -1130,8 +1120,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         return (
                           <div key={index} className="attachment-item">
                             {isImage ? (
-                              <div 
-                                className="attachment-image-wrapper" 
+                              <div
+                                className="attachment-image-wrapper"
                                 onClick={() => setPreviewImage(att.url)}
                                 style={{ cursor: 'pointer' }}
                               >
@@ -1168,7 +1158,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               accept="image/*"
               style={{ display: 'none' }}
             />
-            
+
             <div className="chat-input-wrapper">
               <button
                 className="image-upload-btn"
@@ -1205,7 +1195,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Image Preview Modal */}
       {previewImage && (
-        <div 
+        <div
           className="image-preview-overlay"
           onClick={() => setPreviewImage(null)}
           style={{
@@ -1222,7 +1212,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             padding: '20px'
           }}
         >
-          <button 
+          <button
             onClick={() => setPreviewImage(null)}
             style={{
               position: 'absolute',
@@ -1236,9 +1226,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <X size={32} />
           </button>
-          <img 
-            src={previewImage} 
-            alt="Preview" 
+          <img
+            src={previewImage}
+            alt="Preview"
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
@@ -1249,6 +1239,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           />
         </div>
       )}
+
+        {/* Disconnection Overlay */}
+        {!isConnected && !isLoading && (
+            <div className="chat-overlay">
+                <div className="chat-disconnected-overlay-content">
+                    <WifiOff size={48} />
+                    <p>连接已断开</p>
+                    <p className="status-hint">{getStatusText()}</p>
+                    <button onClick={() => websocketService.reconnect()} className="reconnect-button">
+                        <RefreshCw size={16} />
+                        重新连接
+                    </button>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

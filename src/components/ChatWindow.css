@@ -192,6 +192,15 @@
   background: var(--background-secondary);
 }
 
+/* Chat Body Wrapper */
+.chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative; /* For absolute positioning of overlay */
+}
+
 /* Messages */
 .chat-messages {
   flex: 1;
@@ -384,9 +393,8 @@
   cursor: not-allowed;
 }
 
-/* 加载和断线状态 */
-.chat-loading,
-.chat-disconnected {
+/* 加载状态 */
+.chat-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -395,6 +403,34 @@
   color: #8c8c8c;
   text-align: center;
   background: var(--background-secondary);
+}
+
+/* 断线遮罩 */
+.chat-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.chat-disconnected-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #8c8c8c;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .loading-spinner {
@@ -413,12 +449,12 @@
   }
 }
 
-.chat-disconnected svg {
+.chat-disconnected-overlay-content > svg {
   color: #d1c7b8;
   margin-bottom: 16px;
 }
 
-.chat-disconnected .status-hint {
+.chat-disconnected-overlay-content .status-hint {
   font-size: 14px;
   color: #a0a0a0;
   margin-top: 8px;
@@ -431,20 +467,36 @@
   background: var(--primary-blue);
   color: var(--text-light);
   border: none;
-  border-radius: 8px;
+  border-radius: 24px; /* 胶囊形状 */
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .reconnect-button:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px);
   background-color: #006ae0;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4);
+}
+
+.reconnect-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.reconnect-button svg {
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.reconnect-button:hover svg {
+  transform: rotate(180deg);
 }
 
 .status-text {
@@ -464,7 +516,7 @@
     border-radius: 0;
     position: fixed; /* 确保固定定位 */
   }
-  
+
   /* 适配 iPhone 底部安全区域 */
   .chat-input-area {
     padding-bottom: env(safe-area-inset-bottom, 16px);
@@ -481,12 +533,12 @@
     padding: 12px;
     gap: 8px;
   }
-  
+
   .chat-input {
     font-size: 16px; /* 防止 iOS 缩放 */
     padding: 10px 12px;
   }
-  
+
   .send-button {
     width: 40px;
     height: 40px;
@@ -505,32 +557,32 @@
     height: 32px;
     font-size: 0.8rem;
   }
-  
+
   .message {
     gap: 8px;
     margin-bottom: 12px;
   }
-  
+
   .message-text {
     padding: 10px 14px;
     font-size: 15px; /* 稍微增大字体提高可读性 */
   }
-  
+
   .attachment-item {
     max-width: 100%; /* 附件宽度自适应 */
   }
-  
+
   .icon-button {
     width: 36px;
     height: 36px; /* 增大点击区域 */
   }
-  
+
   /* 语言菜单在移动端更易点击 */
   .language-menu {
     width: 160px;
     right: -10px;
   }
-  
+
   .language-item {
     padding: 12px 16px;
     font-size: 14px;
