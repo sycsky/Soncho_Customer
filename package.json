@@ -1,7 +1,7 @@
 {
   "name": "soncho-customer-widget",
   "private": false,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "description": "AI Agent Customer Chat Widget - 可嵌入式聊天组件",
   "main": "dist-widget/chat-widget.js",
