@@ -33,6 +33,7 @@ interface ChatWindowProps {
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
   isWidgetOpen?: boolean;
   onExternalUnreadIncrement?: () => void;
+  height?: string | number;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -48,6 +49,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   position = 'bottom-right',
   isWidgetOpen = true,
   onExternalUnreadIncrement,
+  height,
 }) => {
   const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -163,16 +165,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getPositionStyle = () => {
     if (!isEmbedded) return {};
 
+    const baseStyle: React.CSSProperties = {};
+    if (height && !isMinimized) {
+      baseStyle.height = typeof height === 'number' ? `${height}px` : height;
+    }
+
     switch (position) {
       case 'bottom-left':
-        return { bottom: '20px', left: '20px', right: 'auto', top: 'auto' };
+        return { ...baseStyle, bottom: '20px', left: '20px', right: 'auto', top: 'auto' };
       case 'top-right':
-        return { top: '20px', right: '20px', bottom: 'auto', left: 'auto' };
+        return { ...baseStyle, top: '20px', right: '20px', bottom: 'auto', left: 'auto' };
       case 'top-left':
-        return { top: '20px', left: '20px', bottom: 'auto', right: 'auto' };
+        return { ...baseStyle, top: '20px', left: '20px', bottom: 'auto', right: 'auto' };
       case 'bottom-right':
       default:
-        return { bottom: '20px', right: '20px', top: 'auto', left: 'auto' };
+        return { ...baseStyle, bottom: '20px', right: '20px', top: 'auto', left: 'auto' };
     }
   };
 
@@ -1190,7 +1197,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <Send size={20} />
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* Image Preview Modal */}
@@ -1245,11 +1252,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="chat-overlay">
                 <div className="chat-disconnected-overlay-content">
                     <WifiOff size={48} />
-                    <p>连接已断开</p>
+                    <p>{t('disconnected')}</p>
                     <p className="status-hint">{getStatusText()}</p>
                     <button onClick={() => websocketService.reconnect()} className="reconnect-button">
                         <RefreshCw size={16} />
-                        重新连接
+                        {t('reconnect')}
                     </button>
                 </div>
             </div>

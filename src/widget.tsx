@@ -21,6 +21,7 @@ interface WidgetConfig {
   shop?: string;
   isLoggedIn?: boolean;
   customer?: ShopifyCustomer | null;
+  height?: string | number;
 }
 
 const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
@@ -65,6 +66,7 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
           position={config.position}
           isWidgetOpen={isOpen}
           onExternalUnreadIncrement={() => setUnreadCount((prev) => prev + 1)}
+          height={config.height}
         />
       </div>
     </>
