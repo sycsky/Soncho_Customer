@@ -469,24 +469,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages */}
       {!isMinimized && (
-        <>
+        <div className="chat-body">
           <div className="chat-messages">
-            {isLoading ? (
+            {isLoading && (
               <div className="chat-loading">
                 <div className="loading-spinner"></div>
                 <p>正在连接客服...</p>
               </div>
-            ) : !isConnected ? (
-              <div className="chat-disconnected">
-                <WifiOff size={48} />
-                <p>连接已断开</p>
-                <p className="status-hint">{getStatusText()}</p>
-                <button onClick={() => websocketService.reconnect()} className="reconnect-button">
-                  <RefreshCw size={16} />
-                  重新连接
-                </button>
-              </div>
-            ) : null}
+            )}
             
             {messages.map((msg) => (
               <div key={msg.id} className={`message message-${msg.sender}`}>
@@ -537,6 +527,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
+              disabled={!isConnected}
             />
             <button 
               onClick={handleSend} 
@@ -547,7 +538,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <Send size={18} />
             </button>
           </div>
-        </>
+
+          {/* Disconnection Overlay */}
+          {!isConnected && !isLoading && (
+            <div className="chat-overlay">
+              <div className="chat-disconnected-overlay-content">
+                <WifiOff size={48} />
+                <p>连接已断开</p>
+                <p className="status-hint">{getStatusText()}</p>
+                <button onClick={() => websocketService.reconnect()} className="reconnect-button">
+                  <RefreshCw size={16} />
+                  重新连接
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
