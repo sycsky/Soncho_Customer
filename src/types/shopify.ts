@@ -21,3 +21,4 @@ export interface ShopifyCustomer {
   defaultAddress?: ShopifyCustomerAddress;
 }
 
+

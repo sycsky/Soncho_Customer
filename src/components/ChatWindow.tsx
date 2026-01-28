@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, X, Minimize2, Maximize2, User, Bot, WifiOff, RefreshCw, Globe } from 'lucide-react';
+import { Send, X, Minimize2, Maximize2, User, Bot, WifiOff, RefreshCw, Globe, Image as ImageIcon, Loader2 } from 'lucide-react';
 import websocketService, { ServerMessage, ConnectionStatus, MessageAttachment } from '../services/websocketService';
 import customerService from '../services/customerService';
+import fileService from '../services/fileService';
 import { ProductCard, GiftCard, DiscountCard, OrderCard } from './MessageCards';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,7 +12,7 @@ import { ShopifyCustomer } from '../types/shopify';
 
 interface Message {
   id: string;
-  content: string;
+  content: string | null;
   sender: 'user' | 'agent' | 'bot' | 'system';
   timestamp: number;
   messageType?: string; // 新增: 消息类型
@@ -30,6 +31,8 @@ interface ChatWindowProps {
   shopifyLoggedIn?: boolean;
   shopifyCustomer?: ShopifyCustomer;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  isWidgetOpen?: boolean;
+  onExternalUnreadIncrement?: () => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -43,6 +46,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   shopifyLoggedIn = false,
   shopifyCustomer,
   position = 'bottom-right',
+  isWidgetOpen = true,
+  onExternalUnreadIncrement,
 }) => {
   const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -57,7 +62,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [browserLanguage, setBrowserLanguage] = useState<string>('en');
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [isThrottled, setIsThrottled] = useState(true); // 节流状态
+  const [previewImage, setPreviewImage] = useState<string | null>(null); // 图片预览
+  const [isUploading, setIsUploading] = useState(false); // 上传状态
+  const [unreadCount, setUnreadCount] = useState(0); // 未读数（最小化时）
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const messageIdSetRef = useRef<Set<string>>(new Set());
+  const isWidgetOpenRef = useRef(isWidgetOpen);
+  const isMinimizedRef = useRef(isMinimized);
+
+  // 同步 ref 与 state/props
+  useEffect(() => {
+    isWidgetOpenRef.current = isWidgetOpen;
+  }, [isWidgetOpen]);
+
+  useEffect(() => {
+    isMinimizedRef.current = isMinimized;
+  }, [isMinimized]);
 
   const languages = [
     { code: 'en', label: 'English' },
@@ -148,6 +172,39 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       websocketService.disconnect();
     };
   }, []);
+
+  // 初始化节流状态
+  useEffect(() => {
+    const lastSent = localStorage.getItem('chat_last_sent_time');
+    const waiting = localStorage.getItem('chat_waiting_for_reply');
+
+    if (waiting === 'true' && lastSent) {
+      const elapsed = Date.now() - parseInt(lastSent, 10);
+      if (elapsed < 15000) {
+        setIsThrottled(true);
+        const remaining = 15000 - elapsed;
+        const timer = setTimeout(() => {
+          setIsThrottled(false);
+          localStorage.removeItem('chat_waiting_for_reply');
+        }, remaining);
+        return () => clearTimeout(timer);
+      } else {
+        localStorage.removeItem('chat_waiting_for_reply');
+      }
+    }
+  }, []);
+
+  // 监听消息列表变化，作为解除节流的兜底
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      // 只要最后一条消息不是用户发送的，就解除节流
+      if (lastMsg.sender !== 'user') {
+         setIsThrottled(false);
+         localStorage.removeItem('chat_waiting_for_reply');
+      }
+    }
+  }, [messages]);
 
   const initializeChat = async () => {
     try {
@@ -293,12 +350,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     } catch (error) {
       console.error('初始化聊天失败:', error);
       setIsLoading(false);
+      /*
       addMessage({
         id: 'error',
         content: t('init_failed'),
         sender: 'bot',
         timestamp: Date.now(),
       });
+      */
     }
   };
 
@@ -340,6 +399,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         historyMessages.sort((a, b) => a.timestamp - b.timestamp);
         
         setMessages(historyMessages);
+        messageIdSetRef.current = new Set(historyMessages.map((msg) => msg.id));
       } else {
         console.log('ℹ️ 没有历史消息，显示欢迎语');
         // 没有历史消息时显示欢迎语
@@ -438,9 +498,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     // 401 Token 过期时不显示提示，自动刷新即可
     if (statusCode === 401) {
       console.log('⚠️ Token 过期，正在自动刷新...');
-      return; // 不显示消息
+      return; 
     }
     
+    // 用户要求不要在聊天框显示连接错误消息，仅记录日志
+    /*
     let errorMsg = t('connection_failed');
     
     switch (statusCode) {
@@ -463,11 +525,100 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       sender: 'bot',
       timestamp: Date.now(),
     });
+    */
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // 延迟滚动，确保DOM已更新
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [messages]);
+
+  // 窗口打开时滚动到底部
+  useEffect(() => {
+    if (isWidgetOpen && !isMinimized) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isWidgetOpen, isMinimized]);
+
+  useEffect(() => {
+    if (!isMinimized) {
+      setUnreadCount(0);
+    }
+  }, [isMinimized]);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        let ctx = audioContextRef.current;
+        if (!ctx || ctx.state === 'closed') {
+          ctx = new AudioCtx();
+          audioContextRef.current = ctx;
+        }
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(() => undefined);
+        }
+        audioUnlockedRef.current = true;
+      } catch {
+        audioUnlockedRef.current = false;
+      }
+    };
+
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    if (!audioUnlockedRef.current) {
+      return;
+    }
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      let ctx = audioContextRef.current;
+      if (!ctx || ctx.state === 'closed') {
+        ctx = new AudioCtx();
+        audioContextRef.current = ctx;
+      }
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => undefined);
+      }
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.05, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+      gain.connect(ctx.destination);
+
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(660, now);
+      osc1.connect(gain);
+      osc1.start(now);
+      osc1.stop(now + 0.12);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(880, now + 0.08);
+      osc2.connect(gain);
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.25);
+    } catch (error) {
+      console.debug('Play notification sound failed:', error);
+    }
+  };
 
   const handleMessage = (serverMessage: ServerMessage) => {
     console.log('收到消息:', serverMessage);
@@ -483,19 +634,46 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       let sender: 'user' | 'agent' | 'bot' | 'system' = 'agent';
       if (msg.senderType === 'CUSTOMER' || msg.customerId === customerId) {
         sender = 'user';
-      } else if (msg.senderType === 'AGENT') {
-        sender = 'agent';
+      } else {
+        // 其他情况（AGENT, SYSTEM, BOT 等）统一视为非用户
+        if (msg.senderType === 'AGENT') {
+          sender = 'agent';
+        } else if (msg.senderType === 'SYSTEM') {
+          sender = 'system';
+        } else {
+          sender = 'bot';
+        }
+        
+        // 收到非用户消息，解除节流
+        setIsThrottled(false);
+        localStorage.removeItem('chat_waiting_for_reply');
       }
       
-      addMessage({
+      const added = addMessage({
         id: msg.id,
-        content: msg.text,
+        content: msg.text ?? null,
         sender,
         timestamp: new Date(msg.createdAt).getTime(),
         messageType: msg.messageType, // 新增: 消息类型
         translationData: msg.translationData, // 新增: 传递翻译数据
         attachments: msg.attachments, // 新增: 处理附件
       });
+
+      if (added && sender !== 'user') {
+        // 使用 ref 获取最新值，避免闭包问题
+        const currentIsWidgetOpen = isWidgetOpenRef.current;
+        const currentIsMinimized = isMinimizedRef.current;
+        // 只有在窗口关闭或最小化时才触发提示和计数
+        if (!currentIsWidgetOpen || (isEmbedded && currentIsMinimized)) {
+          playNotificationSound();
+          if (isEmbedded && currentIsMinimized) {
+            setUnreadCount((prev) => prev + 1);
+          }
+          if (!currentIsWidgetOpen) {
+            onExternalUnreadIncrement?.();
+          }
+        }
+      }
       
       // 自动存储 sessionId
       if (serverMessage.payload.sessionId) {
@@ -505,32 +683,57 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     // 处理其他事件（向后兼容旧格式）
     else if (serverMessage.payload?.message?.text) {
       const msg = serverMessage.payload.message;
-      addMessage({
+      const added = addMessage({
         id: msg.id || Date.now().toString(),
-        content: msg.text,
+        content: msg.text ?? null,
         sender: msg.senderType === 'CUSTOMER' ? 'user' : 'agent',
         timestamp: msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now(),
       });
+      if (added && msg.senderType !== 'CUSTOMER') {
+        // 使用 ref 获取最新值，避免闭包问题
+        const currentIsWidgetOpen = isWidgetOpenRef.current;
+        const currentIsMinimized = isMinimizedRef.current;
+        // 只有在窗口关闭或最小化时才触发提示和计数
+        if (!currentIsWidgetOpen || (isEmbedded && currentIsMinimized)) {
+          playNotificationSound();
+          if (isEmbedded && currentIsMinimized) {
+            setUnreadCount((prev) => prev + 1);
+          }
+          if (!currentIsWidgetOpen) {
+            onExternalUnreadIncrement?.();
+          }
+        }
+      }
     }
   };
 
   const addMessage = (message: Message) => {
-    setMessages((prev) => {
-      // 检查是否存在相同 ID 的消息
-      const exists = prev.some((msg) => msg.id === message.id);
-      if (exists) {
-        return prev;
-      }
-      return [...prev, message];
-    });
+    if (messageIdSetRef.current.has(message.id)) {
+      return false;
+    }
+    messageIdSetRef.current.add(message.id);
+    setMessages((prev) => [...prev, message]);
+    return true;
+  };
+
+  const normalizeMessageText = (text?: string | null) => {
+    if (!text) return '';
+    return text.replace(/[\u200B\uFEFF]/g, '');
   };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const sendMessageContent = (messageContent: string, shouldClearInput: boolean) => {
-    if (!messageContent.trim()) return;
+  const sendMessageContent = (messageContent: string, shouldClearInput: boolean, attachments?: MessageAttachment[]) => {
+    const normalizedText = normalizeMessageText(messageContent);
+    const trimmedText = normalizedText.trim();
+    if (!trimmedText && (!attachments || attachments.length === 0)) return;
+
+    if (isThrottled) {
+      console.warn('⚠️ 消息发送过于频繁，请等待回复或 30 秒后再试');
+      return;
+    }
 
     if (!websocketService.isConnected()) {
       console.error('❌ WebSocket 未连接，无法发送消息');
@@ -558,15 +761,31 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     // 添加用户消息到界面
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: messageContent,
+      content: trimmedText ? normalizedText : '',
       sender: 'user',
       timestamp: Date.now(),
+      attachments: attachments
     };
     addMessage(userMessage);
 
+    // 开启节流
+    setIsThrottled(true);
+    localStorage.setItem('chat_last_sent_time', Date.now().toString());
+    localStorage.setItem('chat_waiting_for_reply', 'true');
+    // 15秒兜底超时
+    setTimeout(() => {
+      setIsThrottled((prev) => {
+        if (prev) {
+          localStorage.removeItem('chat_waiting_for_reply');
+          return false;
+        }
+        return prev;
+      });
+    }, 15000);
+
     // 发送到服务器（使用新格式）
     try {
-      websocketService.sendMessage(messageContent);
+      websocketService.sendMessage(trimmedText ? normalizedText : null, { attachments });
       if (shouldClearInput) {
         setInputValue('');
       }
@@ -578,6 +797,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         sender: 'bot',
         timestamp: Date.now(),
       });
+      // 发送失败解除节流
+      setIsThrottled(false);
+      localStorage.removeItem('chat_waiting_for_reply');
     }
   };
 
@@ -605,6 +827,44 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       );
     }
   }, [i18n.language, t, welcomeMessage]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 重置 input，允许重复选择同一文件
+    event.target.value = '';
+
+    if (!customerToken) {
+      console.error('❌ 缺少 Token，无法上传文件');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      
+      const response = await fileService.uploadFile(file, customerToken);
+      
+      const attachment: MessageAttachment = {
+        type: file.type.startsWith('image/') ? 'IMAGE' : 'FILE',
+        url: response.url?.trim(), // 确保 URL 去除空格
+        name: response.originalName,
+        sizeKb: Math.round(response.fileSize / 1024)
+      };
+
+      sendMessageContent('', true, [attachment]);
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      addMessage({
+        id: Date.now().toString(),
+        content: t('upload_failed', 'Upload failed'),
+        sender: 'bot',
+        timestamp: Date.now(),
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSend = () => {
     sendMessageContent(inputValue, true);
@@ -649,6 +909,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const renderMessageBody = (msg: Message) => {
     if (msg.messageType && msg.messageType.startsWith('CARD_')) {
       try {
+        if (!msg.content) {
+          return <div className="message-text">Invalid card data</div>;
+        }
         const cardData = JSON.parse(msg.content);
         switch (msg.messageType) {
           case 'CARD_PRODUCT':
@@ -669,6 +932,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
 
     const { content } = renderMessageContent(msg);
+    const normalizedContent = normalizeMessageText(content);
+    if (!normalizedContent.trim()) {
+      return null;
+    }
 
     return (
       <div 
@@ -676,7 +943,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {content}
+          {normalizedContent}
         </ReactMarkdown>
       </div>
     );
@@ -776,9 +1043,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
           {isEmbedded && (
-            <button onClick={() => setIsMinimized(!isMinimized)} className="icon-button">
-              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-            </button>
+            <div className="minimize-button-wrapper">
+              <button onClick={() => setIsMinimized(!isMinimized)} className="icon-button">
+                {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+              </button>
+              {isMinimized && unreadCount > 0 && (
+                <span className="unread-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
           )}
           {onClose && (
             <button onClick={onClose} className="icon-button">
@@ -822,19 +1096,27 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   {/* 新增: 渲染附件 */}
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="attachments">
-                      {msg.attachments.map((att, index) => (
-                        <div key={index} className="attachment-item">
-                          {att.type === 'IMAGE' ? (
-                            <a href={att.url} target="_blank" rel="noopener noreferrer">
-                              <img src={att.url} alt={att.name} className="attachment-image" />
-                            </a>
-                          ) : (
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="attachment-file">
-                              {att.name}
-                            </a>
-                          )}
-                        </div>
-                      ))}
+                      {msg.attachments.map((att, index) => {
+                        // 默认附件为图片
+                        const isImage = att.type === 'IMAGE' || !att.type;
+                        return (
+                          <div key={index} className="attachment-item">
+                            {isImage ? (
+                              <div 
+                                className="attachment-image-wrapper" 
+                                onClick={() => setPreviewImage(att.url)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <img src={att.url} alt={att.name} className="attachment-image" />
+                              </div>
+                            ) : (
+                              <a href={att.url} target="_blank" rel="noopener noreferrer" className="attachment-file">
+                                {att.name}
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   <div className="message-time">
@@ -852,24 +1134,91 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           {/* Input */}
           <div className="chat-input-area">
             <input
-              type="text"
-              className="chat-input"
-              placeholder={t('type_message')}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyPress}
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              style={{ display: 'none' }}
             />
+            
+            <div className="chat-input-wrapper">
+              <button
+                className="image-upload-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!isConnected || isLoading || isThrottled || isUploading}
+                title={t('send_image', 'Send Image')}
+              >
+                {isUploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+              </button>
+              <input
+                type="text"
+                className="chat-input"
+                placeholder={isThrottled ? t('wait_for_reply', 'Waiting for reply...') : t('type_message')}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={!isConnected || isLoading || isThrottled}
+              />
+            </div>
+
             <button 
               onClick={handleSend} 
               className="send-button" 
               style={{ backgroundColor: primaryColor }}
-              disabled={!inputValue.trim() || !isConnected}
+              disabled={!inputValue.trim() || !isConnected || isThrottled}
               title={!isConnected ? t('disconnected') : ''}
             >
-              <Send size={18} />
+              <Send size={20} />
             </button>
           </div>
         </>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="image-preview-overlay"
+          onClick={() => setPreviewImage(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <button 
+            onClick={() => setPreviewImage(null)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={32} />
+          </button>
+          <img 
+            src={previewImage} 
+            alt="Preview" 
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              borderRadius: '4px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   );

@@ -12,7 +12,7 @@ export interface MessageAttachment {
 // 发送消息的 payload（不包含 eventId 和 timestamp）
 export interface SendMessagePayload {
   sessionId: string;
-  text: string;
+  text?: string | null;
   isInternal?: boolean;
   attachments?: MessageAttachment[];
   mentions?: string[];
@@ -33,7 +33,7 @@ export interface ReceivedMessage {
   senderType: 'AGENT' | 'CUSTOMER' | 'SYSTEM';
   agentId?: string;
   customerId?: string;
-  text: string;
+  text?: string | null;
   internal: boolean;
   messageType?: string;
   translationData?: Record<string, any>;
@@ -71,7 +71,6 @@ class WebSocketService {
   private sessionId: string | null = null; // 改为 sessionId
   private shouldReconnect: boolean = false;
   private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 3;
   private onConnectedCallback: (() => void) | null = null;
   private onDisconnectedCallback: (() => void) | null = null;
   private onTokenExpiredCallback: (() => Promise<string | null>) | null = null;
@@ -319,7 +318,17 @@ class WebSocketService {
         },
       });
 
-      const isTokenValid = response.ok;
+      // 解析响应体以检查业务逻辑上的 token 有效性
+      let responseData: any = null;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        console.warn('⚠️ 解析验证响应失败，将仅依赖 HTTP 状态码');
+      }
+
+      // 检查 HTTP 状态码和响应体中的 valid 字段
+      // 如果 response.ok 为 true，还需要检查 responseData.data.valid 是否为 false
+      const isTokenValid = response.ok && responseData?.data?.valid !== false;
 
       if (isTokenValid) {
         // 2. 如果 token 仍然有效，说明是网络问题，直接重连
@@ -347,8 +356,8 @@ class WebSocketService {
   }
 
   private attemptReconnect() {
-    if (!this.shouldReconnect || this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ 无法重连：已达到最大重连次数或不允许重连');
+    if (!this.shouldReconnect) {
+      console.error('❌ 无法重连：不允许重连');
       this.updateStatus('error');
       return;
     }
@@ -362,7 +371,7 @@ class WebSocketService {
     );
     
     console.log(
-      `🔄 将在 ${delay}ms 后进行第 ${this.reconnectAttempts}/${this.maxReconnectAttempts} 次重连...`
+      `🔄 将在 ${delay}ms 后进行第 ${this.reconnectAttempts} 次重连...`
     );
     
     this.updateStatus('reconnecting');
@@ -386,7 +395,7 @@ class WebSocketService {
    * 发送消息（新格式：eventId 和 timestamp 在外层）
    */
   sendMessage(
-    text: string, 
+    text?: string | null, 
     options?: {
       isInternal?: boolean;
       attachments?: MessageAttachment[];
@@ -398,9 +407,10 @@ class WebSocketService {
       throw new Error('缺少 sessionId');
     }
 
+    const normalizedText = typeof text === 'string' ? text.trim() : '';
     const payload: SendMessagePayload = {
       sessionId: this.sessionId,
-      text,
+      text: normalizedText ? normalizedText : null,
       isInternal: options?.isInternal || false,
       attachments: options?.attachments || [],
       mentions: options?.mentions || [],

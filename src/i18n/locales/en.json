@@ -82,5 +82,8 @@
   "action_edit": "Edit",
   "action_cancel": "Cancel",
   "cancel_order_msg": "I want to cancel order:{{orderNumber}}",
-  "order_instruction": "Click buttons to track, modify or cancel."
+  "order_instruction": "Click buttons to track, modify or cancel.",
+  "send_image": "Send Image",
+  "wait_for_reply": "Waiting for reply...",
+  "upload_failed": "Upload failed"
 }

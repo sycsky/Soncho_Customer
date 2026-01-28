@@ -25,15 +25,13 @@ interface WidgetConfig {
 
 const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [hasOpened, setHasOpened] = useState(false);
   const [initialMessage, setInitialMessage] = useState<string | undefined>(undefined);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleOpen = (msg?: string) => {
-    if (!hasOpened) {
-      setHasOpened(true);
-    }
     setInitialMessage(msg);
     setIsOpen(true);
+    setUnreadCount(0);
   };
 
   const handleClose = () => {
@@ -51,22 +49,23 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
         onOpen={handleOpen}
         primaryColor={config.primaryColor}
         position={config.position}
+        unreadCount={unreadCount}
       />
       <div style={{ display: isOpen ? 'block' : 'none' }}>
-        {hasOpened && (
-          <ChatWindow
-            isEmbedded={true}
-            onClose={handleClose}
-            userName={config.userName}
-            initialMessage={initialMessage}
-            primaryColor={config.primaryColor}
-            welcomeMessage={config.welcomeMessage}
-            shop={config.shop}
-            shopifyLoggedIn={config.isLoggedIn}
-            shopifyCustomer={config.customer || undefined}
-            position={config.position}
-          />
-        )}
+        <ChatWindow
+          isEmbedded={true}
+          onClose={handleClose}
+          userName={config.userName}
+          initialMessage={initialMessage}
+          primaryColor={config.primaryColor}
+          welcomeMessage={config.welcomeMessage}
+          shop={config.shop}
+          shopifyLoggedIn={config.isLoggedIn}
+          shopifyCustomer={config.customer || undefined}
+          position={config.position}
+          isWidgetOpen={isOpen}
+          onExternalUnreadIncrement={() => setUnreadCount((prev) => prev + 1)}
+        />
       </div>
     </>
   );

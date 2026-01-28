@@ -9,6 +9,7 @@ interface WidgetLauncherProps {
   isOpen: boolean;
   primaryColor?: string;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  unreadCount?: number;
 }
 
 export const WidgetLauncher: React.FC<WidgetLauncherProps> = ({ 
@@ -16,7 +17,8 @@ export const WidgetLauncher: React.FC<WidgetLauncherProps> = ({
   onOpen, 
   isOpen, 
   primaryColor, 
-  position = 'bottom-right' 
+  position = 'bottom-right',
+  unreadCount = 0
 }) => {
   const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
@@ -65,15 +67,19 @@ export const WidgetLauncher: React.FC<WidgetLauncherProps> = ({
 
   // Default Bubble Mode
   return (
-    <button 
-      className="widget-launcher-bubble" 
-      onClick={() => onOpen()}
-      style={{ 
-        backgroundColor: primaryColor,
-        ...positionStyle
-      }}
-    >
-      <MessageCircle size={32} />
-    </button>
+    <div className="widget-launcher-bubble-wrapper" style={positionStyle}>
+      <button 
+        className="widget-launcher-bubble" 
+        onClick={() => onOpen()}
+        style={{ backgroundColor: primaryColor }}
+      >
+        <MessageCircle size={32} />
+      </button>
+      {unreadCount > 0 && (
+        <span className="widget-launcher-badge">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+    </div>
   );
 };

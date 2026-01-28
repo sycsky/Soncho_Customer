@@ -79,5 +79,8 @@
   "action_edit": "編集",
   "action_cancel": "キャンセル",
   "cancel_order_msg": "注文をキャンセルしたい:{{orderNumber}}",
-  "order_instruction": "追跡、変更、またはキャンセルの場合はボタンをクリックしてください"
+  "order_instruction": "追跡、変更、またはキャンセルの場合はボタンをクリックしてください",
+  "send_image": "画像を送信",
+  "wait_for_reply": "返信を待っています...",
+  "upload_failed": "アップロードに失敗しました"
 }

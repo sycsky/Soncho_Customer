@@ -79,5 +79,8 @@
   "action_edit": "Bearbeiten",
   "action_cancel": "Stornieren",
   "cancel_order_msg": "Ich möchte die Bestellung stornieren:{{orderNumber}}",
-  "order_instruction": "Klicken Sie auf die Schaltflächen zum Verfolgen, Ändern oder Stornieren"
+  "order_instruction": "Klicken Sie auf die Schaltflächen zum Verfolgen, Ändern oder Stornieren",
+  "send_image": "Bild senden",
+  "wait_for_reply": "Warten auf Antwort...",
+  "upload_failed": "Upload fehlgeschlagen"
 }

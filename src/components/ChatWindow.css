@@ -116,6 +116,27 @@
   gap: 8px;
 }
 
+.minimize-button-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff3b30;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 .language-selector-wrapper {
   position: relative;
 }
@@ -268,22 +289,61 @@
   background: var(--background-main);
   border-top: 1px solid var(--border-color);
   border-radius: 0 0 16px 16px;
+  align-items: flex-end; /* Align bottom to handle multi-line inputs if needed */
+}
+
+/* New Wrapper for Input and Icon */
+.chat-input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chat-input-wrapper:focus-within {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
 }
 
 .chat-input {
   flex: 1;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  background: var(--background-secondary);
-  border-radius: 8px;
+  padding: 8px;
+  border: none;
+  background: transparent;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  /* Removed border-radius/border/bg as they are on wrapper now */
 }
 
-.chat-input:focus {
-  border-color: var(--primary-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+/* Image upload button inside wrapper */
+.image-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #64748b; /* Slate-500 */
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.image-upload-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary-blue);
+}
+
+.image-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .send-button {
@@ -363,7 +423,9 @@
   transition: transform 0.2s, background-color 0.2s;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .reconnect-button:hover {

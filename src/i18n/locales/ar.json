@@ -79,5 +79,8 @@
   "action_edit": "تعديل",
   "action_cancel": "إلغاء",
   "cancel_order_msg": "أريد إلغاء الطلب:{{orderNumber}}",
-  "order_instruction": "انقر فوق الأزرار للتتبع أو التعديل أو الإلغاء"
+  "order_instruction": "انقر فوق الأزرار للتتبع أو التعديل أو الإلغاء",
+  "send_image": "إرسال صورة",
+  "wait_for_reply": "في انتظار الرد...",
+  "upload_failed": "فشل التحميل"
 }

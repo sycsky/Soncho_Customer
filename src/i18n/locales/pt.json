@@ -79,5 +79,8 @@
   "action_edit": "Modificar",
   "action_cancel": "Cancelar",
   "cancel_order_msg": "Quero cancelar o pedido:{{orderNumber}}",
-  "order_instruction": "Clique nos botões para rastrear, modificar ou cancelar"
+  "order_instruction": "Clique nos botões para rastrear, modificar ou cancelar",
+  "send_image": "Enviar imagem",
+  "wait_for_reply": "Aguardando resposta...",
+  "upload_failed": "Falha no envio"
 }

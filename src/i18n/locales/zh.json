@@ -82,5 +82,8 @@
   "action_edit": "修改",
   "action_cancel": "取消",
   "cancel_order_msg": "我要取消订单:{{orderNumber}}",
-  "order_instruction": "如需追踪、修改或取消，请点击按钮"
+  "order_instruction": "如需追踪、修改或取消，请点击按钮",
+  "send_image": "发送图片",
+  "wait_for_reply": "等待回复...",
+  "upload_failed": "上传失败"
 }

@@ -79,5 +79,8 @@
   "action_edit": "수정",
   "action_cancel": "취소",
   "cancel_order_msg": "주문을 취소하고 싶습니다:{{orderNumber}}",
-  "order_instruction": "추적, 수정 또는 취소하려면 버튼을 클릭하세요"
+  "order_instruction": "추적, 수정 또는 취소하려면 버튼을 클릭하세요",
+  "send_image": "이미지 보내기",
+  "wait_for_reply": "답변을 기다리는 중...",
+  "upload_failed": "업로드 실패"
 }
