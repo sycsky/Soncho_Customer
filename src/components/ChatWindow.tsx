@@ -147,6 +147,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setShowLanguageMenu(!showLanguageMenu);
   };
 
+  // 获取欢迎语内容
+  const getWelcomeContent = () => {
+    if (welcomeMessage) {
+      return welcomeMessage;
+    }
+    const content = t('welcome_default', { returnObjects: true });
+    if (Array.isArray(content)) {
+      return content.join('\n');
+    }
+    return typeof content === 'string' ? content : String(content);
+  };
+
   // 计算位置样式
   const getPositionStyle = () => {
     if (!isEmbedded) return {};
@@ -405,7 +417,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         // 没有历史消息时显示欢迎语
         addMessage({
           id: '0',
-          content: welcomeMessage || t('welcome_default'),
+          content: getWelcomeContent(),
           sender: 'bot',
           timestamp: Date.now(),
         });
@@ -415,7 +427,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       // 加载失败时显示欢迎语
       addMessage({
         id: '0',
-        content: welcomeMessage || t('welcome_default'),
+        content: getWelcomeContent(),
         sender: 'bot',
         timestamp: Date.now(),
       });
@@ -725,12 +737,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const sendMessageContent = (messageContent: string, shouldClearInput: boolean, attachments?: MessageAttachment[]) => {
+  const sendMessageContent = (messageContent: string, shouldClearInput: boolean, attachments?: MessageAttachment[], skipThrottle: boolean = false) => {
     const normalizedText = normalizeMessageText(messageContent);
     const trimmedText = normalizedText.trim();
     if (!trimmedText && (!attachments || attachments.length === 0)) return;
 
-    if (isThrottled) {
+    if (isThrottled && !skipThrottle) {
       console.warn('⚠️ 消息发送过于频繁，请等待回复或 30 秒后再试');
       return;
     }
@@ -769,19 +781,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     addMessage(userMessage);
 
     // 开启节流
-    setIsThrottled(true);
-    localStorage.setItem('chat_last_sent_time', Date.now().toString());
-    localStorage.setItem('chat_waiting_for_reply', 'true');
-    // 15秒兜底超时
-    setTimeout(() => {
-      setIsThrottled((prev) => {
-        if (prev) {
-          localStorage.removeItem('chat_waiting_for_reply');
-          return false;
-        }
-        return prev;
-      });
-    }, 15000);
+    if (!skipThrottle) {
+      setIsThrottled(true);
+      localStorage.setItem('chat_last_sent_time', Date.now().toString());
+      localStorage.setItem('chat_waiting_for_reply', 'true');
+      // 15秒兜底超时
+      setTimeout(() => {
+        setIsThrottled((prev) => {
+          if (prev) {
+            localStorage.removeItem('chat_waiting_for_reply');
+            return false;
+          }
+          return prev;
+        });
+      }, 15000);
+    }
 
     // 发送到服务器（使用新格式）
     try {
@@ -819,7 +833,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           if (msg.id === '0') {
             return {
               ...msg,
-              content: t('welcome_default')
+              content: getWelcomeContent()
             };
           }
           return msg;
@@ -852,7 +866,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         sizeKb: Math.round(response.fileSize / 1024)
       };
 
-      sendMessageContent('', true, [attachment]);
+      sendMessageContent('', true, [attachment], true);
     } catch (error) {
       console.error('文件上传失败:', error);
       addMessage({
@@ -866,8 +880,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自动调整 textarea 高度
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [inputValue]);
+
   const handleSend = () => {
     sendMessageContent(inputValue, true);
+    // 重置高度
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -1150,14 +1178,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               >
                 {isUploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
               </button>
-              <input
-                type="text"
+              <textarea
+                ref={textareaRef}
                 className="chat-input"
                 placeholder={isThrottled ? t('wait_for_reply', 'Waiting for reply...') : t('type_message')}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyPress}
                 disabled={!isConnected || isLoading || isThrottled}
+                rows={1}
               />
             </div>
 

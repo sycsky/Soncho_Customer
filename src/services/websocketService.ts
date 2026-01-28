@@ -292,12 +292,9 @@ class WebSocketService {
       // 正常关闭，不重连
       console.log('ℹ️ WebSocket 正常关闭');
       this.shouldReconnect = false;
-    } else if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+    } else if (this.shouldReconnect) {
       // 其他错误码，尝试重连
       this.attemptReconnect();
-    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ 达到最大重连次数，停止重连');
-      this.updateStatus('error');
     }
   }
 

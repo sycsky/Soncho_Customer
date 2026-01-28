@@ -30,7 +30,14 @@
   "permission_denied": "Zugriff verweigert",
   "server_error": "Serverfehler, bitte versuchen Sie es später erneut",
   "service_unavailable": "Dienst nicht verfügbar",
-  "welcome_default": "Hallo, ich bin ein intelligenter Kundendienst-Agent. Benötigen Sie meine Hilfe? Ich kann Ihnen bei Folgendem helfen:\n\n- Bestellung abfragen\n- Bestellung ändern\n- Bestellung stornieren\n- Produkte für Sie empfehlen\n- Wenn Sie menschlichen Service benötigen, lassen Sie es mich bitte wissen",
+  "welcome_default": [
+    "Hallo, ich bin ein intelligenter Kundendienst-Agent. Benötigen Sie meine Hilfe? Ich kann Ihnen bei Folgendem helfen:",
+    "- Bestellung abfragen",
+    "- Bestellung ändern",
+    "- Bestellung stornieren",
+    "- Produkte für Sie empfehlen",
+    "- Wenn Sie menschlichen Service benötigen, lassen Sie es mich bitte wissen"
+  ],
   "conn_failed_code": "Verbindung fehlgeschlagen (Fehlercode: {{code}})",
   "order": "Bestellung",
   "tracking": "Sendungsverfolgung",

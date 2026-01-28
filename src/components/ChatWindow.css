@@ -312,11 +312,25 @@
 .chat-input {
   flex: 1;
   padding: 8px;
-  border: none;
-  background: transparent;
+  border: none !important;
+  background: transparent !important;
   font-size: 14px;
-  outline: none;
-  /* Removed border-radius/border/bg as they are on wrapper now */
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  max-height: 120px;
+  overflow-y: hidden; /* Prevent scrollbar */
+  min-height: 37px; /* Ensure minimum height for one line */
+}
+
+.chat-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* Image upload button inside wrapper */
@@ -566,11 +580,12 @@
 /* Markdown Styles */
 .markdown-body {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5; /* 改小行距 */
+  white-space: pre-wrap; /* Preserve newlines */
 }
 
 .markdown-body p {
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* 改小段落间距 */
 }
 
 .markdown-body p:last-child {
@@ -578,8 +593,8 @@
 }
 
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-  margin-top: 16px;
-  margin-bottom: 8px;
+  margin-top: 12px;
+  margin-bottom: 6px;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -590,11 +605,18 @@
 
 .markdown-body ul, .markdown-body ol {
   padding-left: 20px;
-  margin-bottom: 8px;
+  margin-bottom: 4px; /* 改小列表下边距 */
+  margin-top: 4px;    /* 增加列表上边距控制 */
 }
 
 .markdown-body li {
-  margin-bottom: 4px;
+  margin-bottom: 2px; /* 改小列表项间距 */
+}
+
+/* 新增：去除列表项内部段落的边距，解决嵌套p标签导致的大间距 */
+.markdown-body li > p {
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .markdown-body code {

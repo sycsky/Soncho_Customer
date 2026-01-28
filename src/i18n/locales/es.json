@@ -30,7 +30,14 @@
   "permission_denied": "Permiso denegado",
   "server_error": "Error del servidor, por favor inténtelo de nuevo más tarde",
   "service_unavailable": "Servicio no disponible",
-  "welcome_default": "Hola, soy un agente de servicio al cliente inteligente. ¿Necesitas mi ayuda? Puedo ayudarte con:\n\n- Consultar pedido\n- Modificar pedido\n- Cancelar pedido\n- Recomendarte productos\n- Si necesitas servicio humano, por favor házmelo saber",
+  "welcome_default": [
+    "Hola, soy un agente de servicio al cliente inteligente. ¿Necesitas mi ayuda? Puedo ayudarte con:",
+    "- Consultar pedido",
+    "- Modificar pedido",
+    "- Cancelar pedido",
+    "- Recomendarte productos",
+    "- Si necesitas servicio humano, por favor házmelo saber"
+  ],
   "conn_failed_code": "Conexión fallida (Código de error: {{code}})",
   "order": "Pedido",
   "tracking": "Seguimiento de envío",

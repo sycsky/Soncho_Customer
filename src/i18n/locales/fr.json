@@ -30,7 +30,14 @@
   "permission_denied": "Permission refusée",
   "server_error": "Erreur serveur, veuillez réessayer plus tard",
   "service_unavailable": "Service indisponible",
-  "welcome_default": "Bonjour, je suis un agent de service client intelligent. Avez-vous besoin de mon aide ? Je peux vous aider avec :\n\n- Consulter la commande\n- Modifier la commande\n- Annuler la commande\n- Vous recommander des produits\n- Si vous avez besoin d'une assistance humaine, veuillez me le faire savoir",
+  "welcome_default": [
+    "Bonjour, je suis un agent de service client intelligent. Avez-vous besoin de mon aide ? Je peux vous aider avec :",
+    "- Consulter la commande",
+    "- Modifier la commande",
+    "- Annuler la commande",
+    "- Vous recommander des produits",
+    "- Si vous avez besoin d'une assistance humaine, veuillez me le faire savoir"
+  ],
   "conn_failed_code": "Échec de la connexion (Code d'erreur : {{code}})",
   "order": "Commande",
   "tracking": "Suivi de livraison",

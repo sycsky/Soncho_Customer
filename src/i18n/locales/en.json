@@ -30,7 +30,13 @@
   "permission_denied": "Permission denied",
   "server_error": "Server error, please try again later",
   "service_unavailable": "Service unavailable",
-  "welcome_default": "Hello, I'm an intelligent customer service agent. Do you need my help? I can assist you with:\n\n- Query order\n- Modify order\n- Cancel order\n- Recommend products for you\n- If you need human service, please let me know",
+  "welcome_default": [
+    "Hello, I'm an intelligent customer service agent. Do you need my help? I can assist you with:",
+    "- Query order / Modify order",
+    "- Cancel order",
+    "- Recommend products for you",
+    "- If you need human service, please let me know"
+  ],
   "conn_failed_code": "Connection failed (Error code: {{code}})",
   "order": "Order",
   "tracking": "Tracking",
