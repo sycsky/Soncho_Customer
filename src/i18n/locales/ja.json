@@ -89,5 +89,7 @@
   "order_instruction": "追跡、変更、またはキャンセルの場合はボタンをクリックしてください",
   "send_image": "画像を送信",
   "wait_for_reply": "返信を待っています...",
-  "upload_failed": "アップロードに失敗しました"
+  "upload_failed": "アップロードに失敗しました",
+  "add_to_cart": "カートに追加",
+  "added_to_cart": "カートに追加しました"
 }

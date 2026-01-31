@@ -88,5 +88,7 @@
   "order_instruction": "如需追蹤、修改或取消，請點擊按鈕",
   "send_image": "發送圖片",
   "wait_for_reply": "等待回覆...",
-  "upload_failed": "上傳失敗"
+  "upload_failed": "上傳失敗",
+  "add_to_cart": "加入購物車",
+  "added_to_cart": "已加入購物車"
 }

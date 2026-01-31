@@ -92,5 +92,7 @@
   "order_instruction": "如需追踪、修改或取消，请点击按钮",
   "send_image": "发送图片",
   "wait_for_reply": "等待回复...",
-  "upload_failed": "上传失败"
+  "upload_failed": "上传失败",
+  "add_to_cart": "加入购物车",
+  "added_to_cart": "已加入购物车"
 }

@@ -5,8 +5,10 @@ import websocketService, { ServerMessage, ConnectionStatus, MessageAttachment } 
 import customerService from '../services/customerService';
 import fileService from '../services/fileService';
 import { ProductCard, GiftCard, DiscountCard, OrderCard } from './MessageCards';
+import { Toast, ToastRef } from './Toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import './ChatWindow.css';
 import { ShopifyCustomer } from '../types/shopify';
 
@@ -64,12 +66,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [browserLanguage, setBrowserLanguage] = useState<string>('en');
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
-  const [isThrottled, setIsThrottled] = useState(true); // 节流状态
+  const [isThrottled, setIsThrottled] = useState(false); // 节流状态
   const [previewImage, setPreviewImage] = useState<string | null>(null); // 图片预览
   const [isUploading, setIsUploading] = useState(false); // 上传状态
   const [unreadCount, setUnreadCount] = useState(0); // 未读数（最小化时）
+  const toastRef = useRef<ToastRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContentRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
   const messageIdSetRef = useRef<Set<string>>(new Set());
@@ -224,6 +229,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     }
   }, [messages]);
+
+  // 监听购物车添加成功事件
+  useEffect(() => {
+    
+    const handleCartAdd = () => {
+      toastRef.current?.show();
+    };
+
+    window.addEventListener('cart:add', handleCartAdd);
+    return () => {
+      window.removeEventListener('cart:add', handleCartAdd);
+    };
+  }, []);
 
   const initializeChat = async () => {
     try {
@@ -548,19 +566,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   useEffect(() => {
-    // 延迟滚动，确保DOM已更新
-    const timer = setTimeout(() => {
-      scrollToBottom();
-    }, 0);
-    return () => clearTimeout(timer);
+    // 收到任何新消息时，都平滑滚动到底部
+    // 这解决了用户反馈的“接收到新消息不会滚动到底部”的问题
+    if (messages.length > 0) {
+      scrollToBottom('smooth');
+    }
   }, [messages]);
 
-  // 窗口打开时滚动到底部
+  // 窗口打开或从最小化恢复时滚动到底部
   useEffect(() => {
     if (isWidgetOpen && !isMinimized) {
+      // 稍微延迟一点，等待布局完成
       const timer = setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+        scrollToBottom('auto');
+      }, 50);
       return () => clearTimeout(timer);
     }
   }, [isWidgetOpen, isMinimized]);
@@ -740,9 +759,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     return text.replace(/[\u200B\uFEFF]/g, '');
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (scrollContainerRef.current) {
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      scrollContainerRef.current.scrollTo({
+        top: scrollHeight - clientHeight,
+        behavior
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
   };
+
+  // 使用 ResizeObserver 监听内容变化，实现自动滚动
+  useEffect(() => {
+    if (!messagesContentRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // 当内容高度变化时（如图片加载、Markdown 渲染），自动滚动到底部
+      // 这里使用 'auto' 行为以避免平滑滚动在连续变化时的突兀感
+      scrollToBottom('auto');
+    });
+
+    resizeObserver.observe(messagesContentRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const sendMessageContent = (messageContent: string, shouldClearInput: boolean, attachments?: MessageAttachment[], skipThrottle: boolean = false) => {
     const normalizedText = normalizeMessageText(messageContent);
@@ -950,7 +994,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         const cardData = JSON.parse(msg.content);
         switch (msg.messageType) {
           case 'CARD_PRODUCT':
-            return <ProductCard data={cardData} />;
+            return <ProductCard data={cardData} shop={shop} />;
           case 'CARD_GIFT':
             return <GiftCard data={cardData} />;
           case 'CARD_DISCOUNT':
@@ -977,7 +1021,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         className="message-text markdown-body"
         style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
           {normalizedContent}
         </ReactMarkdown>
       </div>
@@ -1040,6 +1084,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div className={windowClassName} style={getPositionStyle()}>
+      {/* Success Toast */}
+      <Toast ref={toastRef} message={t('added_to_cart')} />
+
       {/* Header */}
       <div className="chat-header" style={{ backgroundColor: primaryColor }}>
         <div className="chat-header-info">
@@ -1100,60 +1147,66 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Messages */}
       {!isMinimized && (
         <div className="chat-body">
-          <div className="chat-messages">
-            {isLoading && (
-              <div className="chat-loading">
-                <div className="loading-spinner"></div>
-                <p>{t('connecting_message')}</p>
-              </div>
-            )}
-            
-            {messages.map((msg) => {
-              const isCard = msg.messageType && msg.messageType.startsWith('CARD_');
-
-              return (
-              <div key={msg.id} className={`message message-${msg.sender} ${isCard ? 'message-card-type' : ''}`}>
-                <div className="message-avatar" style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}>
-                  {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
+          <div className="chat-messages" ref={scrollContainerRef}>
+            <div ref={messagesContentRef}>
+              {isLoading && (
+                <div className="chat-loading">
+                  <div className="loading-spinner"></div>
+                  <p>{t('connecting_message')}</p>
                 </div>
-                <div className="message-content">
-                  {renderMessageBody(msg)}
-                  {/* 新增: 渲染附件 */}
-                  {msg.attachments && msg.attachments.length > 0 && (
-                    <div className="attachments">
-                      {msg.attachments.map((att, index) => {
-                        // 默认附件为图片
-                        const isImage = att.type === 'IMAGE' || !att.type;
-                        return (
-                          <div key={index} className="attachment-item">
-                            {isImage ? (
-                              <div
-                                className="attachment-image-wrapper"
-                                onClick={() => setPreviewImage(att.url)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <img src={att.url} alt={att.name} className="attachment-image" />
-                              </div>
-                            ) : (
-                              <a href={att.url} target="_blank" rel="noopener noreferrer" className="attachment-file">
-                                {att.name}
-                              </a>
-                            )}
-                          </div>
-                        );
+              )}
+              
+              {messages.map((msg) => {
+                const isCard = msg.messageType && msg.messageType.startsWith('CARD_');
+
+                return (
+                <div key={msg.id} className={`message message-${msg.sender} ${isCard ? 'message-card-type' : ''}`}>
+                  <div className="message-avatar" style={msg.sender === 'user' && primaryColor ? { backgroundColor: primaryColor } : undefined}>
+                    {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
+                  </div>
+                  <div className="message-content">
+                    {renderMessageBody(msg)}
+                    {/* 新增: 渲染附件 */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="attachments">
+                        {msg.attachments.map((att, index) => {
+                          // 默认附件为图片
+                          const isImage = att.type === 'IMAGE' || !att.type;
+                          return (
+                            <div key={index} className="attachment-item">
+                              {isImage ? (
+                                <div
+                                  className="attachment-image-wrapper"
+                                  onClick={() => setPreviewImage(att.url)}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  <img 
+                                    src={att.url} 
+                                    alt={att.name} 
+                                    className="attachment-image" 
+                                  />
+                                </div>
+                              ) : (
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="attachment-file">
+                                  {att.name}
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="message-time">
+                      {new Date(msg.timestamp).toLocaleTimeString(i18n.language, {
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </div>
-                  )}
-                  <div className="message-time">
-                    {new Date(msg.timestamp).toLocaleTimeString(i18n.language, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
                   </div>
                 </div>
-              </div>
-            )})}
-            <div ref={messagesEndRef} />
+              )})}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input */}

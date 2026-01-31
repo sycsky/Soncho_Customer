@@ -287,30 +287,63 @@
   flex-direction: column;
 }
 .mini-product-title {
-  font-size: 0.8rem;
-  line-height: 1.3;
-  margin-bottom: 4px;
+  font-size: 0.95rem; /* Increased from 0.8rem */
+  line-height: 1.4;
+  margin-bottom: 6px;
   color: #333;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-weight: 500;
+  font-weight: 600; /* Increased weight */
 }
 .mini-product-price {
-  font-size: 0.85rem;
+  font-size: 1rem; /* Increased from 0.85rem */
   font-weight: bold;
   color: #2563eb;
   margin-top: auto;
 }
+
+.add-to-cart-btn {
+  background: white;
+  border: 1px solid #2563eb;
+  color: #2563eb;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.add-to-cart-btn:hover {
+  background: #f0f7ff;
+}
+
+.add-to-cart-btn:active {
+  transform: scale(0.98);
+}
+
+.add-to-cart-btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .checkout-button {
   width: 100%;
   background: #2563eb;
   color: white;
   border: none;
-  padding: 10px;
+  padding: 12px; /* Increased padding */
   border-radius: 8px;
   font-weight: 600;
+  font-size: 1rem; /* Explicit font size */
   cursor: pointer;
   display: flex;
   align-items: center;

@@ -89,5 +89,7 @@
   "order_instruction": "Clique nos botões para rastrear, modificar ou cancelar",
   "send_image": "Enviar imagem",
   "wait_for_reply": "Aguardando resposta...",
-  "upload_failed": "Falha no envio"
+  "upload_failed": "Falha no envio",
+  "add_to_cart": "Adicionar ao carrinho",
+  "added_to_cart": "Adicionado ao carrinho"
 }

@@ -89,5 +89,7 @@
   "order_instruction": "추적, 수정 또는 취소하려면 버튼을 클릭하세요",
   "send_image": "이미지 보내기",
   "wait_for_reply": "답변을 기다리는 중...",
-  "upload_failed": "업로드 실패"
+  "upload_failed": "업로드 실패",
+  "add_to_cart": "장바구니 담기",
+  "added_to_cart": "장바구니에 담았습니다"
 }

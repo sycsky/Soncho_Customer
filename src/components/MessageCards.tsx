@@ -20,6 +20,8 @@ interface ProductData {
 
 interface ProductCardProps {
   data: ProductData | ProductData[];
+  shop?: string;
+  onImageLoad?: () => void;
 }
 
 interface GiftCardProps {
@@ -116,7 +118,7 @@ const copyToClipboard = async (text: string, t: any) => {
     }
 };
 
-export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ data, shop, onImageLoad }) => {
   const { t } = useTranslation();
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   
@@ -132,11 +134,442 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
     products = [data as ProductData];
   }
 
+  const getProductUrl = (product: ProductData) => {
+    if (product.url) return product.url;
+    if (shop && product.handle) {
+      // Ensure shop doesn't have protocol
+      const cleanShop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      return `https://${cleanShop}/products/${product.handle}`;
+    }
+    return null;
+  };
+
   const handleClick = (product: ProductData) => {
-    if (product.url) {
-      window.open(product.url, '_blank');
-    } else if (product.handle) {
-      // Fallback if full URL not provided but handle is
+    const url = getProductUrl(product);
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleAddToCart = async (e: React.MouseEvent, product: ProductData) => {
+    e.stopPropagation();
+    
+    // 尝试获取 variantId (gid://shopify/ProductVariant/123 -> 123)
+    let variantId = '';
+    if (product.variantId) {
+      variantId = product.variantId.split('/').pop() || '';
+    }
+
+    if (!variantId) {
+      console.warn('No variant ID found for product:', product);
+      // Fallback: 如果没有 variantId，尝试跳转到产品页面
+      handleClick(product);
+      return;
+    }
+
+    // 确定目标 Origin
+    let origin = '';
+    // 优先使用 window.location.origin (如果在 Shopify 页面上)
+    // 但如果 shop 参数存在且与当前 origin 不同，我们可能在 iframe 或开发环境中
+    // 简单起见，如果提供了 shop，我们构造跳转链接；
+    // 如果是嵌入式 App，通常希望 AJAX 添加。
+    // 这里我们先尝试 AJAX 添加 (假设同源)，如果失败则打开新窗口。
+    
+    try {
+      // 1. 尝试 AJAX 添加到购物车 (Section Rendering API for Dawn & Horizon & Universal)
+      const formData = new FormData();
+      formData.append('id', variantId);
+      formData.append('quantity', '1');
+
+      // Request sections for update to ensure UI reflects the new state (fixes empty cart and rollback issues)
+      // 1. Static/Known Section Names
+      const staticSections = [
+        'cart-drawer',
+        'cart-notification',
+        'cart-notification-product',
+        'cart-notification-button',
+        'cart-icon-bubble',
+        'cart-bubble', 
+        'cart-count',
+        'header-cart', 
+        'header-group', // For sticky headers
+        'cart-live-region-text',
+        'main-cart-items',
+        'cart-footer'
+      ];
+
+      // 2. Dynamic Discovery: Find actual section IDs present in the current DOM
+      // This fixes the issue where "cart-drawer.liquid" exists but is rendered with a dynamic ID (e.g. "template--123__cart-drawer")
+      const dynamicSections: string[] = [];
+      try {
+          const sectionElements = document.querySelectorAll('[id^="shopify-section-"], [data-section-id]');
+          sectionElements.forEach(el => {
+              // Extract ID from data attribute or DOM ID
+              const id = el.getAttribute('data-section-id') || el.id.replace('shopify-section-', '');
+              if (id && (
+                  id.includes('cart') || 
+                  id.includes('drawer') || 
+                  id.includes('header') || 
+                  id.includes('notification')
+              )) {
+                  dynamicSections.push(id);
+              }
+          });
+      } catch (e) {
+          console.warn('Error discovering dynamic sections', e);
+      }
+
+      // Combine and deduplicate
+      const sections = Array.from(new Set([...staticSections, ...dynamicSections]));
+      
+      formData.append('sections', sections.join(','));
+      formData.append('sections_url', window.location.pathname);
+
+      const response = await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json'
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // toast.success(t('added_to_cart'));
+
+        // --- UI 更新逻辑 (Section Injection + Event Broadcasting + HTML Scraping Fallback) ---
+ 
+         // 0. Inject Sections (Priority Fix)
+         let sectionsUpdated = false;
+         if (data.sections && Object.keys(data.sections).length > 0) {
+             Object.entries(data.sections).forEach(([sectionId, html]) => {
+                 try {
+                     // Try various selectors to find the container for this section
+                     const selectors = [
+                         `#shopify-section-${sectionId}`,
+                         `#${sectionId}`,
+                         `[data-section-id="${sectionId}"]`,
+                         `.shopify-section.${sectionId}`,
+                         `.${sectionId}`
+                     ];
+                     
+                     let targetElement = null;
+                     for (const selector of selectors) {
+                         targetElement = document.querySelector(selector);
+                         if (targetElement) break;
+                     }
+
+                     if (targetElement && typeof html === 'string') {
+                         // Create a temporary container to parse the HTML
+                         const tempDiv = document.createElement('div');
+                         tempDiv.innerHTML = html;
+                         
+                         // Special handling for cart-icon-bubble which is often just the content
+                         if (sectionId === 'cart-icon-bubble' || sectionId === 'cart-bubble') {
+                              targetElement.innerHTML = html;
+                         } else {
+                              // Safer replacement strategy
+                              targetElement.innerHTML = html;
+                         }
+                         sectionsUpdated = true;
+                     }
+                 } catch (e) {
+                     console.warn(`Failed to update section ${sectionId}`, e);
+                 }
+             });
+         }
+
+         // 0.5 Fallback: HTML Scraping (If sections failed or were empty)
+         // This solves the "empty cart not refreshing" issue on themes where we don't know the section IDs.
+         if (!sectionsUpdated) {
+             try {
+                 // Fetch the full cart page (HTML) which is guaranteed to have the correct state
+                 const cartPageResponse = await fetch('/cart');
+                 const cartPageText = await cartPageResponse.text();
+                 const parser = new DOMParser();
+                 const doc = parser.parseFromString(cartPageText, 'text/html');
+
+                 // List of critical UI elements to sync
+                 const criticalSelectors = [
+                     // Cart Count / Badge
+                     '.cart-count',
+                     '#CartCount',
+                     '.site-header__cart-count',
+                     '[data-cart-count]',
+                     '.cart-count-bubble',
+                     '.header__cart-count',
+                     '[data-header-cart-count]',
+                     '.header-bar__cart-count',
+                     
+                     // Cart Icon Containers (often contain the count)
+                     '.site-header__cart',
+                     '.header__icon--cart',
+                     '#cart-icon-bubble',
+                     
+                     // Drawers / Mini Carts (Updating these prevents "rollback" when opening)
+                     '#CartDrawer',
+                     '#cart-drawer',
+                     '.cart-drawer',
+                     'cart-drawer',
+                     'cart-notification'
+                 ];
+
+                 criticalSelectors.forEach(selector => {
+                     const currentEls = document.querySelectorAll(selector);
+                     const newEl = doc.querySelector(selector);
+
+                     if (currentEls.length > 0 && newEl) {
+                         currentEls.forEach(currentEl => {
+                             // Don't replace if it's a complex interactive component that might break
+                             // UNLESS it's a simple badge or icon container
+                             if (currentEl.tagName.includes('-') && !selector.includes('cart-drawer')) {
+                                 // Custom element: try to just update innerHTML if possible to preserve listeners on the host?
+                                 // Actually, replacing innerHTML is safer than replacing the element itself for React/Vue hydration
+                                 currentEl.innerHTML = newEl.innerHTML;
+                             } else {
+                                 // Standard element: replace content
+                                 currentEl.innerHTML = newEl.innerHTML;
+                                 
+                                 // Sync classes (important for removing 'hidden' class)
+                                 currentEl.className = newEl.className;
+                                 
+                                 // Sync attributes (aria-hidden, etc.)
+                                 Array.from(newEl.attributes).forEach(attr => {
+                                     currentEl.setAttribute(attr.name, attr.value);
+                                 });
+                             }
+                         });
+                     }
+                 });
+             } catch (scrapeErr) {
+                 console.warn('HTML Scraping fallback failed', scrapeErr);
+             }
+         }
+        
+        // 1. 获取最新的完整购物车数据
+        let cartData = null;
+        let itemCount = null;
+        try {
+            const cartRes = await fetch('/cart.js');
+            if (cartRes.ok) {
+                cartData = await cartRes.json();
+                itemCount = cartData.item_count;
+            }
+        } catch (e) {
+            console.warn('Failed to fetch full cart', e);
+        }
+
+        const currentCount = itemCount !== null ? itemCount : (data.item_count || 1); 
+
+        // 2. 全方位事件广播 (The "Nuclear" Dispatch Strategy)
+        try {
+            const detailData = cartData || data;
+            
+            // Standard / Common
+            document.documentElement.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true, detail: detailData }));
+            window.dispatchEvent(new CustomEvent('cart:add', { detail: data }));
+            window.dispatchEvent(new CustomEvent('shopify:cart:update', { detail: detailData }));
+            
+            // Dawn / Shopify 2.0
+            const cartUpdateEvent = new CustomEvent('cart-update', { bubbles: true, detail: { cart: detailData } });
+            document.querySelector('cart-notification')?.dispatchEvent(cartUpdateEvent);
+            document.querySelector('cart-drawer')?.dispatchEvent(cartUpdateEvent);
+            
+            // Horizon 2025 / Newer Themes
+            document.dispatchEvent(new CustomEvent('CartAddEvent', { bubbles: true, detail: detailData }));
+            document.dispatchEvent(new CustomEvent('cart:build', { bubbles: true })); // Streamline 等
+            
+            // Prestige, Warehouse 等高端商业主题
+            document.dispatchEvent(new CustomEvent('cart:refresh', { detail: detailData }));
+
+            // Turbo, Flex 等 Out of the Sandbox 系列
+            document.dispatchEvent(new CustomEvent('shopify:section:load', { bubbles: true }));
+
+            // 针对一些老款 jQuery 主题
+            if ((window as any).jQuery) {
+                try {
+                    (window as any).jQuery('body').trigger('added_to_cart', [detailData]);
+                    (window as any).jQuery(document).trigger('cart.requestComplete', [detailData]);
+                } catch (jqErr) {
+                    console.warn('jQuery trigger failed', jqErr);
+                }
+            }
+
+            // 针对 AJAX Cart API 库
+            document.dispatchEvent(new CustomEvent('cart-updated', { detail: detailData }));
+
+            // Legacy / Global Functions
+            if ((window as any).Shopify?.onCartUpdate && cartData) {
+                (window as any).Shopify.onCartUpdate(cartData);
+            }
+            if ((window as any).ajaxCart?.load) {
+                (window as any).ajaxCart.load();
+            }
+            // Impulse / UpsellPlus suggestions
+            const qtyInputs = document.querySelectorAll('form.ajaxcart .js-qty__num, form.cart__contents input.quantity__input, input.ajaxcart__qty-num');
+            if (qtyInputs.length > 0) {
+                qtyInputs.forEach(input => input.dispatchEvent(new Event('change', { bubbles: true })));
+            }
+
+        } catch (e) {
+            console.log('Failed to dispatch theme events', e);
+        }
+
+        // 3. 手动 DOM 更新 (Manual DOM Manipulation - Expanded)
+        if (currentCount !== null) {
+            try {
+                const selectors = [
+                    '#CartCount',
+                    '.cart-count',
+                    '.site-header__cart-count',
+                    '[data-cart-count]',
+                    '.cart-link__bubble-num',
+                    '.header__cart-count',
+                    '[data-header-cart-count]',
+                    '.header-bar__cart-count',
+                    '.cart-count-bubble span[aria-hidden="true"]', // Dawn
+                    '.header__icon--cart .icon-cart + span', // Generic structure
+                    '.header__icon--cart span:last-child',
+                    '.cart-count-bubble__text',
+                    '.cart-count-bubble span',
+                    'cart-count',
+                    'cart-count-bubble',
+                    '[data-testid="cart-count"]',
+                    '[data-testid="cart-bubble"]',
+                    '[data-id="cart-count"]',
+                    '[data-id="cart-bubble"]'
+                ];
+                
+                selectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(el => {
+                        // CRITICAL FIX: Prevent overwriting body or html content
+                        if (el.tagName === 'BODY' || el.tagName === 'HTML') return;
+                        
+                        el.textContent = currentCount.toString();
+                        el.classList.remove('hide', 'hidden', 'invisible', 'is-hidden');
+                        
+                        // Handle parents
+                        const bubble = el.closest('.cart-count-bubble') || el.closest('.site-header__cart-indicator');
+                        if (bubble && currentCount > 0) {
+                            bubble.classList.remove('hide', 'hidden', 'invisible', 'is-hidden');
+                        }
+                    });
+                });
+
+                const customCountEls = document.querySelectorAll('cart-count, cart-count-bubble, [data-testid="cart-count"], [data-testid="cart-bubble"]');
+                customCountEls.forEach(el => {
+                    if ((el as any).count !== undefined) {
+                        (el as any).count = currentCount;
+                    }
+                    if ((el as any).setCount) {
+                        (el as any).setCount(currentCount);
+                    }
+                });
+
+                // Use a safe attribute for body state to avoid selector conflicts
+                document.documentElement.setAttribute('data-current-cart-count', currentCount.toString());
+                document.body.setAttribute('data-current-cart-count', currentCount.toString());
+                
+                // Final confirmation event
+                document.documentElement.dispatchEvent(new CustomEvent('cart:updated', {
+                    bubbles: true,
+                    detail: { cart: cartData || data }
+                }));
+            } catch (e) {
+                console.warn('Manual UI update failed', e);
+            }
+        }
+        
+        // 4. 强制唤醒/打开抽屉 (Force Open Logic)
+        // 针对 "只更新数字，不弹窗" 的问题
+        try {
+            // A. Dawn: 如果没有 cart-notification，尝试添加 'active' 类到 cart-notification
+            const cartNotification = document.querySelector('cart-notification');
+            if (cartNotification && !(cartNotification as any).renderContents) {
+                cartNotification.classList.add('active');
+            }
+            
+            // B. Generic Class Toggles (is-open, active, etc.)
+            const drawerSelectors = [
+                '#cart-drawer',
+                '.cart-drawer',
+                '#CartDrawer',
+                '.mini-cart',
+                '#mini-cart',
+                '.drawer--cart',
+                '.cart-sidebar',
+                '.cart-flyout',
+                '[data-cart-drawer]',
+                '[data-cart-sidebar]',
+                '[data-cart-panel]',
+                '[data-testid="cart-drawer"]',
+                '[data-testid="mini-cart"]',
+                '[data-testid="cart-flyout"]'
+            ];
+            drawerSelectors.forEach(sel => {
+                const el = document.querySelector(sel);
+                if (el) {
+                    // 很多主题使用 class 来控制显示
+                    el.classList.add('is-open', 'active', 'open', 'visible');
+                    el.setAttribute('aria-hidden', 'false');
+                }
+            });
+            
+            // C. Dispatch explicit "Open" events
+            window.dispatchEvent(new CustomEvent('cart:open', { bubbles: true }));
+            document.documentElement.dispatchEvent(new CustomEvent('cart:open', { bubbles: true }));
+            
+            // D. Click Trigger (Last Resort, but safer check)
+            // 只有当不在购物车页面时，才尝试点击
+            if (!window.location.pathname.includes('/cart')) {
+                // 查找那些看起来像"打开购物车"的按钮，但排除掉链接到 /cart 的（除非是 js 劫持的）
+                // 很多主题的购物车按钮只是一个 <a href="/cart">，但也绑定了 click 事件来打开抽屉
+                // 我们尝试触发 click，但要防止跳转
+                const triggers = document.querySelectorAll('[data-drawer-trigger="cart"], .js-cart-trigger, [data-action="toggle-cart"], [data-cart-toggle], [data-cart-drawer-toggle], [data-action="open-cart"], [aria-controls="CartDrawer"], [aria-controls="cart-drawer"], [data-cart-drawer-open], [data-testid="cart-drawer-trigger"], [data-testid="cart-button"]');
+                if (triggers.length > 0) {
+                    (triggers[0] as HTMLElement).click();
+                } else {
+                     // 如果没有明确的 trigger，尝试点击 header icon，但如果是链接则小心
+                     const icon = document.querySelector('.header__icon--cart, #cart-icon-bubble');
+                     if (icon) {
+                         // 只有当它看起来绑定了 JS 事件时（例如没有 href 或者 href="#" 或者 href="/cart" 但我们希望它弹窗）
+                         // 风险：如果它只是一个纯链接，会跳转。
+                         // 安全起见，我们只点击那些带有特定 data 属性或 class 的
+                     }
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to force open drawer', e);
+        }
+
+      } else {
+        throw new Error('AJAX add to cart failed');
+      }
+    } catch (error) {
+      console.warn('AJAX add to cart failed, falling back to redirect:', error);
+      
+      // 2. Fallback: 跳转到 permalink
+      // 格式: https://{shop}/cart/{variant_id}:1
+      
+      if (shop) {
+        const cleanShop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        origin = `https://${cleanShop}`;
+      } else {
+        // 尝试从产品 URL 获取 origin
+        if (product.url) {
+          try {
+            const urlObj = new URL(product.url);
+            origin = urlObj.origin;
+          } catch (e) {}
+        }
+      }
+
+      if (origin) {
+        window.open(`${origin}/cart/${variantId}:1`, '_blank');
+      } else {
+        toast.error(t('failed_copy')); // 使用通用错误或新建
+      }
     }
   };
 
@@ -144,13 +577,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
     e.stopPropagation();
     if (products.length === 0) return;
 
-    // Construct checkout URL
+    // Determine origin
+    let origin = '';
     const firstUrl = products.find(p => p.url)?.url;
-    if (!firstUrl) return;
+    if (firstUrl) {
+      try {
+        const urlObj = new URL(firstUrl);
+        origin = urlObj.origin;
+      } catch (e) {
+        console.error('Invalid product URL', e);
+      }
+    }
+
+    if (!origin && shop) {
+       const cleanShop = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
+       origin = `https://${cleanShop}`;
+    }
+
+    if (!origin) {
+        console.error('Cannot determine checkout origin');
+        return;
+    }
 
     try {
-      const urlObj = new URL(firstUrl);
-      const origin = urlObj.origin;
       const variantsPath = products
         .map(p => {
             const vId = p.variantId ? p.variantId.split('/').pop() : ''; 
@@ -163,7 +612,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
         window.open(`${origin}/cart/${variantsPath}`, '_blank');
       }
     } catch (e) {
-      console.error('Invalid product URL', e);
+      console.error('Error creating checkout URL', e);
     }
   };
 
@@ -185,7 +634,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
           >
             <div className="mini-product-image">
                 {product.image ? (
-                  <img src={product.image} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img 
+                    src={product.image} 
+                    alt={product.title} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    onLoad={onImageLoad}
+                  />
                 ) : (
                   <ShoppingBag style={{ color: '#ccc', margin: 'auto' }} size={24} />
                 )}
@@ -200,6 +654,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
                 </div>
               )}
               <div className="mini-product-price">{product.currency || '$'}{product.price}</div>
+              <button 
+                className="add-to-cart-btn"
+                onClick={(e) => handleAddToCart(e, product)}
+              >
+                <ShoppingCart size={14} />
+                {t('add_to_cart')}
+              </button>
             </div>
           </div>
         ))}

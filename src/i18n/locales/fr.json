@@ -89,5 +89,7 @@
   "order_instruction": "Cliquez sur les boutons pour suivre, modifier ou annuler",
   "send_image": "Envoyer une image",
   "wait_for_reply": "En attente de réponse...",
-  "upload_failed": "Échec du téléchargement"
+  "upload_failed": "Échec du téléchargement",
+  "add_to_cart": "Ajouter au panier",
+  "added_to_cart": "Ajouté au panier"
 }

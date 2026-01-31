@@ -91,5 +91,7 @@
   "order_instruction": "Click buttons to track, modify or cancel.",
   "send_image": "Send Image",
   "wait_for_reply": "Waiting for reply...",
-  "upload_failed": "Upload failed"
+  "upload_failed": "Upload failed",
+  "add_to_cart": "Add to Cart",
+  "added_to_cart": "Added to cart"
 }

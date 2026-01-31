@@ -271,8 +271,20 @@
 
 .message-user .message-text {
   background: var(--primary-blue);
-  color: var(--text-light);
+  color: #ffffff !important; /* Force white text to override Shopify theme styles */
   border-radius: 12px 12px 4px 12px;
+}
+
+/* Ensure all child elements in user message also use white text */
+.message-user .message-text p,
+.message-user .message-text span,
+.message-user .message-text div,
+.message-user .message-text li,
+.message-user .message-text td,
+.message-user .message-text th,
+.message-user .message-text strong,
+.message-user .message-text em {
+  color: #ffffff !important;
 }
 
 .message-agent .message-text,
@@ -632,12 +644,11 @@
 /* Markdown Styles */
 .markdown-body {
   font-size: 14px;
-  line-height: 1.5; /* 改小行距 */
-  white-space: pre-wrap; /* Preserve newlines */
+  line-height: 1.6;
 }
 
 .markdown-body p {
-  margin-bottom: 6px; /* 改小段落间距 */
+  margin-bottom: 8px;
 }
 
 .markdown-body p:last-child {
@@ -657,12 +668,12 @@
 
 .markdown-body ul, .markdown-body ol {
   padding-left: 20px;
-  margin-bottom: 4px; /* 改小列表下边距 */
-  margin-top: 4px;    /* 增加列表上边距控制 */
+  margin-bottom: 8px;
+  margin-top: 0;
 }
 
 .markdown-body li {
-  margin-bottom: 2px; /* 改小列表项间距 */
+  margin-bottom: 4px;
 }
 
 /* 新增：去除列表项内部段落的边距，解决嵌套p标签导致的大间距 */

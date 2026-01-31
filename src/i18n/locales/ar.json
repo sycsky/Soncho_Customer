@@ -89,5 +89,7 @@
   "order_instruction": "انقر فوق الأزرار للتتبع أو التعديل أو الإلغاء",
   "send_image": "إرسال صورة",
   "wait_for_reply": "في انتظار الرد...",
-  "upload_failed": "فشل التحميل"
+  "upload_failed": "فشل التحميل",
+  "add_to_cart": "أضف إلى السلة",
+  "added_to_cart": "تمت الإضافة إلى السلة"
 }
