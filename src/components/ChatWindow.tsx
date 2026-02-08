@@ -30,6 +30,7 @@ interface ChatWindowProps {
   primaryColor?: string;
   welcomeMessage?: string;
   shop?: string;
+  channel?: string;
   shopifyLoggedIn?: boolean;
   shopifyCustomer?: ShopifyCustomer;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -46,6 +47,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   primaryColor,
   welcomeMessage,
   shop,
+  channel = 'WEB',
   shopifyLoggedIn = false,
   shopifyCustomer,
   position = 'bottom-right',
@@ -66,6 +68,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [browserLanguage, setBrowserLanguage] = useState<string>('en');
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [workflowStatus, setWorkflowStatus] = useState<string | null>(null); // 新增: 工作流状态
   const [isThrottled, setIsThrottled] = useState(false); // 节流状态
   const [previewImage, setPreviewImage] = useState<string | null>(null); // 图片预览
   const [isUploading, setIsUploading] = useState(false); // 上传状态
@@ -304,7 +307,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             name: shopifyIdentity.name,
             email: shopifyIdentity.email,
             phone: shopifyIdentity.phone,
-            channel: 'WEB',
+            channel: channel,
             channelId: browserId,
             channelUserId: shopifyIdentity.shopifyCustomerId,
             shop,
@@ -350,7 +353,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         customerInfo = await customerService.getCustomerToken({
           name,
-          channel: 'WEB',
+          channel: channel,
           channelId: browserId,
           shop, // 传递 shop 参数
           metadata, // 传递 URL 参数
@@ -440,22 +443,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       } else {
         console.log('ℹ️ 没有历史消息，显示欢迎语');
         // 没有历史消息时显示欢迎语
-        addMessage({
-          id: '0',
-          content: getWelcomeContent(),
-          sender: 'bot',
-          timestamp: Date.now(),
-        });
+        // addMessage({
+        //   id: '0',
+        //   content: getWelcomeContent(),
+        //   sender: 'bot',
+        //   timestamp: Date.now(),
+        // });
       }
     } catch (error) {
       console.error('❌ 加载历史消息失败:', error);
       // 加载失败时显示欢迎语
-      addMessage({
-        id: '0',
-        content: getWelcomeContent(),
-        sender: 'bot',
-        timestamp: Date.now(),
-      });
+      // addMessage({
+      //   id: '0',
+      //   content: getWelcomeContent(),
+      //   sender: 'bot',
+      //   timestamp: Date.now(),
+      // });
     }
   };
 
@@ -661,9 +664,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleMessage = (serverMessage: ServerMessage) => {
     console.log('收到消息:', serverMessage);
     
+    // 处理工作流状态事件
+    if (serverMessage.event === 'workflowStatus') {
+      const { statusType, description } = serverMessage.payload;
+      if (statusType === 'COMPLETED') {
+        setWorkflowStatus(null);
+      } else {
+        setWorkflowStatus(description);
+      }
+      return;
+    }
+
     // 处理新消息事件
     if (serverMessage.event === 'newMessage' && serverMessage.payload.message) {
       const msg = serverMessage.payload.message;
+      
+      // 收到任何新消息，都重置工作流状态（作为兜底）
+      setWorkflowStatus(null);
       
       if (msg.internal || msg.senderType === 'SYSTEM') {
         console.log('内部消息或系统消息，不显示:', msg);
@@ -1088,7 +1105,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <Toast ref={toastRef} message={t('added_to_cart')} />
 
       {/* Header */}
-      <div className="chat-header" style={{ backgroundColor: primaryColor }}>
+      <div 
+        className="chat-header" 
+        style={primaryColor ? { '--header-bg': primaryColor } as React.CSSProperties : undefined}
+      >
         <div className="chat-header-info">
           <Bot size={20} />
           <div>
@@ -1205,6 +1225,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   </div>
                 </div>
               )})}
+
+              {/* 工作流状态气泡 */}
+              {workflowStatus && (
+                <div className="message message-bot status-bubble">
+                  <div className="message-avatar">
+                    <Bot size={16} />
+                  </div>
+                  <div className="message-content">
+                    <div className="message-text status-text-content">
+                      <div className="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                      {workflowStatus}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div ref={messagesEndRef} />
             </div>
           </div>

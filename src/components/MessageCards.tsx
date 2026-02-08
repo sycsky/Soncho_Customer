@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ShoppingBag, Gift, Ticket, ShoppingCart, Package, ExternalLink, Truck, Edit2, Check, X as CloseIcon, Loader2 } from 'lucide-react';
 import './MessageCards.css';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { API_BASE_URL } from '../config';
+import { Toast, ToastRef } from './Toast';
 
 interface ProductData {
   id: string;
@@ -80,13 +81,14 @@ interface OrderCardProps {
   onSendMessage?: (content: string) => void;
 }
 
-const copyToClipboard = async (text: string, t: any) => {
-    if (!text) return;
+const copyToClipboard = async (text: string, t: any, onSuccess?: () => void) => {
+    if (!text) return false;
     
     try {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(text);
-            toast.success(t('copied_code', { text }));
+            onSuccess?.();
+            return true;
         } else {
             // Fallback for non-secure context or older browsers
             const textArea = document.createElement("textarea");
@@ -98,23 +100,27 @@ const copyToClipboard = async (text: string, t: any) => {
             textArea.focus();
             textArea.select();
             
+            let fallbackSuccessful = false;
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
-                    toast.success(t('copied_code', { text }));
+                    onSuccess?.();
+                    fallbackSuccessful = true;
                 } else {
                     toast.error(t('failed_copy'));
                 }
             } catch (err) {
                 console.error('Fallback copy failed', err);
                 toast.error(t('failed_copy'));
+            } finally {
+                document.body.removeChild(textArea);
             }
-            
-            document.body.removeChild(textArea);
+            return fallbackSuccessful;
         }
     } catch (err) {
         console.error('Copy failed', err);
         toast.error(t('failed_copy'));
+        return false;
     }
 };
 
@@ -678,8 +684,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ data, shop, onImageLoa
 
 export const GiftCard: React.FC<GiftCardProps> = ({ data }) => {
   const { t } = useTranslation();
+  const toastRef = useRef<ToastRef>(null);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const handleCopy = async () => {
+    await copyToClipboard(data.code, t, () => {
+      setToastMessage(t('copied_code', { text: data.code }));
+      toastRef.current?.show();
+    });
+  };
   return (
-    <div className="message-card gift-card" onClick={() => copyToClipboard(data.code, t)}>
+    <div className="message-card gift-card" onClick={handleCopy}>
       <div className="card-header">
         <Gift size={16} className="card-icon" />
         <span className="card-type">{t('gift_card')}</span>
@@ -687,14 +702,24 @@ export const GiftCard: React.FC<GiftCardProps> = ({ data }) => {
       <div className="gift-amount">{data.currency || '$'}{data.amount}</div>
       <div className="gift-code">{data.code}</div>
       <div className="gift-footer">{t('redeem_checkout')}</div>
+      <Toast ref={toastRef} message={toastMessage} />
     </div>
   );
 };
 
 export const DiscountCard: React.FC<DiscountCardProps> = ({ data }) => {
   const { t } = useTranslation();
+  const toastRef = useRef<ToastRef>(null);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const handleCopy = async () => {
+    await copyToClipboard(data.code, t, () => {
+      setToastMessage(t('copied_code', { text: data.code }));
+      toastRef.current?.show();
+    });
+  };
   return (
-    <div className="message-card discount-card" onClick={() => copyToClipboard(data.code, t)}>
+    <div className="message-card discount-card" onClick={handleCopy}>
       <div className="card-header">
         <Ticket size={16} className="card-icon" />
         <span className="card-type">{t('discount')}</span>
@@ -702,6 +727,7 @@ export const DiscountCard: React.FC<DiscountCardProps> = ({ data }) => {
       <div className="discount-value">{t('discount_off', {value: data.value})}</div>
       <div className="discount-code">{data.code}</div>
       <div className="discount-desc">{data.description}</div>
+      <Toast ref={toastRef} message={toastMessage} />
     </div>
   );
 };
@@ -827,6 +853,8 @@ const SingleOrderCard: React.FC<{ order: OrderData; onSendMessage?: (content: st
   const [editedItems, setEditedItems] = useState(order.items || []);
   const [editedNote, setEditedNote] = useState(order.note || '');
   const [exchangingItemIndex, setExchangingItemIndex] = useState<number | null>(null);
+  const toastRef = useRef<ToastRef>(null);
+  const [toastMessage, setToastMessage] = useState('');
   
   const canEdit = order.fulfillmentStatus.toLowerCase().includes('unfulfilled');
 
@@ -837,7 +865,10 @@ const SingleOrderCard: React.FC<{ order: OrderData; onSendMessage?: (content: st
       : null;
     
     if (trackingUrl) {
-      copyToClipboard(trackingUrl, t);
+      copyToClipboard(trackingUrl, t, () => {
+        setToastMessage(t('copied_code', { text: trackingUrl }));
+        toastRef.current?.show();
+      });
     } else {
       toast.error(t('no_tracking_info'));
     }
@@ -1182,6 +1213,7 @@ const SingleOrderCard: React.FC<{ order: OrderData; onSendMessage?: (content: st
           onClose={() => setExchangingItemIndex(null)}
         />
       )}
+      <Toast ref={toastRef} message={toastMessage} />
     </div>
   );
 };

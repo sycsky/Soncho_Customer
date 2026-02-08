@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../config';
 
 export interface CustomerTokenRequest {
   name: string;
-  channel: 'WEB' | 'WECHAT' | 'WHATSAPP' | 'LINE' | 'TELEGRAM' | 'FACEBOOK' | 'EMAIL' | 'SMS' | 'PHONE' | 'APP';
+  channel: 'WEB' | 'WECHAT' | 'WHATSAPP' | 'LINE' | 'TELEGRAM' | 'FACEBOOK' | 'EMAIL' | 'SMS' | 'PHONE' | 'APP' | 'SHOPIFY' | string;
   channelId: string;
   channelUserId?: string;
   email?: string;

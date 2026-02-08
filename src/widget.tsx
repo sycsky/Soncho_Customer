@@ -19,6 +19,7 @@ interface WidgetConfig {
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
   welcomeMessage?: string;
   shop?: string;
+  channel?: string;
   isLoggedIn?: boolean;
   customer?: ShopifyCustomer | null;
   height?: string | number;
@@ -61,6 +62,7 @@ const WidgetApp: React.FC<{ config: WidgetConfig }> = ({ config }) => {
           primaryColor={config.primaryColor}
           welcomeMessage={config.welcomeMessage}
           shop={config.shop}
+          channel={config.channel}
           shopifyLoggedIn={config.isLoggedIn}
           shopifyCustomer={config.customer || undefined}
           position={config.position}

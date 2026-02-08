@@ -6,11 +6,10 @@ export interface ToastRef {
 
 interface ToastProps {
   message: string;
-  type?: 'success';
   duration?: number;
 }
 
-export const Toast = forwardRef<ToastRef, ToastProps>(({ message, type = 'success', duration = 3000 }, ref) => {
+export const Toast = forwardRef<ToastRef, ToastProps>(({ message, duration = 3000 }, ref) => {
   const [visible, setVisible] = useState(false);
 
   useImperativeHandle(ref, () => ({
